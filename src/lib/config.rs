@@ -15,7 +15,7 @@ pub struct Config {
 
 /// `MyConfig` implements `Default`
 impl ::std::default::Default for Config {
-    fn default<'a>() -> Self {
+    fn default() -> Self {
         let addlist = vec![
             (
                 "AddlistOne".to_string(),
