@@ -2,22 +2,21 @@ use super::config::Config;
 use regex::Regex;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
-use std::sync::Arc;
 use std::{thread, time};
 
 pub struct AddlistConfig {
     pub name: String,
-    pub config: Arc<Config>,
-    want: Arc<Regex>,
-    not_want: Arc<Regex>,
+    pub config: Config,
+    want: Regex,
+    not_want: Regex,
 }
 
 impl AddlistConfig {
     pub fn new(
         name: &String,
-        config: Arc<Config>,
-        want: Arc<Regex>,
-        not_want: Arc<Regex>,
+        config: Config,
+        want: Regex,
+        not_want: Regex,
     ) -> AddlistConfig {
         AddlistConfig {
             name: name.to_string(),
@@ -48,7 +47,6 @@ pub fn addlist(config: &AddlistConfig) -> Vec<String> {
 
     let data = config
         .config
-        .as_ref()
         .addlist
         .iter()
         .filter(|list| list.0 == config.name)

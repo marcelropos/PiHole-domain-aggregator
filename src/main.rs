@@ -4,7 +4,6 @@ use lib::errors::MyErrors;
 use lib::thread::ThreadPool;
 use std::fs;
 use std::io::Write;
-use std::sync::Arc;
 
 use regex::Regex;
 
@@ -37,23 +36,19 @@ fn main() -> Result<(), MyErrors> {
 
 /// Creates all addlists as in the givn Config definded.
 fn run(config: Config) -> Result<(), MyErrors> {
-    let config = Arc::new(config);
-    let want = Arc::new(Regex::new(r"(\.?[a-z0-9-]+)+\.[a-z]+").expect("Valid regex pattern"));
-    let not_want = Arc::new(Regex::new(r"(/|=|\*|\?|\$|,|!)").expect("Valid regex pattern"));
+    let want = Regex::new(r"(\.?[a-z0-9-]+)+\.[a-z]+").expect("Valid regex pattern");
+    let not_want = Regex::new(r"(/|=|\*|\?|\$|,|!)").expect("Valid regex pattern");
 
-    
-
-    {
-        let pool = ThreadPool::new(config.threads)?;
-        for (addlist_name, _) in config.addlist.iter() {
-            let addlist_config =
-                AddlistConfig::new(addlist_name, config.clone(), want.clone(), not_want.clone());
-            pool.execute(|| {
-                let data = addlist(&addlist_config);
-                write_to_file(addlist_config, data);
-            })
-        }
+    let pool = ThreadPool::new(config.threads)?;
+    for (addlist_name, _) in config.addlist.iter() {
+        let addlist_config =
+            AddlistConfig::new(addlist_name, config.clone(), want.clone(), not_want.clone());
+        pool.execute(|| {
+            let data = addlist(&addlist_config);
+            write_to_file(addlist_config, data);
+        })
     }
+
     Ok(())
 }
 
