@@ -120,3 +120,30 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
         .map(|domain| format!("{}{}{}", config.prefix(), domain, config.suffix()))
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use serde::{Deserialize, Serialize};
+    use std::collections::HashSet;
+    use std::fs;
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    struct ParseConfig {
+        raw: Vec<String>,
+        parsed: Vec<String>,
+    }
+
+    #[test]
+    fn test_parse() -> Result<(), String> {
+        let config_path =
+            fs::read_to_string("./testdata/parse.json").expect("Test config file is not found.");
+        let test_config: ParseConfig =
+            serde_yaml::from_str(config_path.as_str()).expect("Test config is not valid.");
+        let raw = test_config.raw.join("\n");
+        let want = HashSet::from_iter(test_config.parsed);
+
+        let have = super::parse(raw);
+        assert_eq!(want, have, "Parsed data does not match expected result!");
+        Ok(())
+    }
+}
