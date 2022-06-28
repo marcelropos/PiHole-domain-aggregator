@@ -79,7 +79,6 @@ fn parse(raw_data: String) -> HashSet<String> {
         .flat_map(|line| line.split(" "))
         .map(|entry| domain_validation::encode(entry))
         .map(|entry| domain_validation::truncate(entry))
-        .filter(|domain| !domain.is_empty())
         .filter(|domain| domain_validation::validate(domain))
         .collect()
 }
