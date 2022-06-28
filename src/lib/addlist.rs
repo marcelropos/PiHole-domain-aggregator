@@ -1,5 +1,4 @@
 use super::config::Config;
-use regex::Regex;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
 use std::{thread, time};
@@ -7,22 +6,13 @@ use std::{thread, time};
 pub struct AddlistConfig {
     pub name: String,
     pub config: Config,
-    want: Regex,
-    not_want: Regex,
 }
 
 impl AddlistConfig {
-    pub fn new(
-        name: &String,
-        config: Config,
-        want: Regex,
-        not_want: Regex,
-    ) -> AddlistConfig {
+    pub fn new(name: &String, config: Config) -> AddlistConfig {
         AddlistConfig {
             name: name.to_string(),
             config,
-            want,
-            not_want,
         }
     }
     pub fn prefix(&self) -> &str {
@@ -52,7 +42,7 @@ pub fn addlist(config: &AddlistConfig) -> Vec<String> {
         .filter(|list| list.0 == config.name)
         .flat_map(|list| &list.1)
         .flat_map(|url| fetch(url, &client, config.config.delay))
-        .flat_map(|data| parse(data, &config))
+        .flat_map(|data| parse(data))
         .collect();
     mutate(&config, data)
 }
@@ -78,7 +68,7 @@ fn fetch(url: &String, client: &Client, delay: u64) -> Option<String> {
 /// Parses a raw data to a HashSet of valid domains.
 ///
 /// Raw data is parsed to valid unique domains.
-fn parse(raw_data: String, config: &AddlistConfig) -> HashSet<String> {
+fn parse(raw_data: String) -> HashSet<String> {
     raw_data
         .to_lowercase()
         .lines()
@@ -87,9 +77,10 @@ fn parse(raw_data: String, config: &AddlistConfig) -> HashSet<String> {
             None => line,
         })
         .flat_map(|line| line.split(" "))
-        .filter(|entry| !config.not_want.is_match(entry))
-        .flat_map(|entry| config.want.find_iter(entry))
-        .map(|domain| domain.as_str().to_string())
+        .map(|entry| domain_validation::encode(entry))
+        .map(|entry| domain_validation::truncate(entry))
+        .filter(|domain| !domain.is_empty())
+        .filter(|domain| domain_validation::validate(domain))
         .collect()
 }
 
@@ -121,29 +112,258 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
         .collect()
 }
 
+mod domain_validation {
+
+    /// Recives possible IDNs and converts it to punicode if needed.
+    pub fn encode(str: &str) -> String {
+        let part = str.split(".");
+        let encoded: Vec<String> = part.into_iter().map(|str| help_encode(str)).collect();
+        encoded.join(".")
+    }
+
+    fn help_encode(str: &str) -> String {
+        if str.is_ascii() {
+            str.to_string()
+        } else {
+            match punycode::encode(str) {
+                Ok(str) => String::from("xn--") + str.as_str(),
+                Err(_) => str.to_string(),
+            }
+        }
+    }
+
+    /// Truncates invalid characters and returns the valid part.
+    pub fn truncate(str: String) -> String {
+        let valid: String = str
+            .chars()
+            .filter(|c| !char::is_ascii_alphanumeric(&c.clone()))
+            .map(|c| c.to_string())
+            .filter(|c| !["-", "."].contains(&c.as_str()))
+            .take(1)
+            .collect();
+
+        let result;
+        if valid != "" {
+            match str.find(valid.as_str()) {
+                Some(index) => result = str[..index].to_string(),
+                None => result = str,
+            }
+        } else {
+            result = str
+        }
+        result
+        .strip_suffix(".")
+        .unwrap_or_else(|| result.as_str())
+        .to_string()
+    }
+
+    /// Validates domain as in rfc1035 section 2.3.1. defined.
+    pub fn validate(domain: &String) -> bool {
+        let mut lables = domain.split(".");
+
+        let is_first_alphabetic = lables.clone().all(|label| {
+            label
+                .chars()
+                .nth(0)
+                .map(|c| c.is_ascii_alphabetic())
+                .unwrap_or_else(|| false)
+        });
+        let is_last_alphanumeric = lables.clone().all(|label| {
+            label
+                .chars()
+                .last()
+                .map(|c| (c.is_ascii_alphanumeric()))
+                .unwrap_or_else(|| false)
+        });
+        let is_interior_characters_valid = lables
+            .clone()
+            .all(|label| label.chars().all(|c| c.is_alphanumeric() || c == '-'));
+        let upper_limit = lables.clone().all(|label| label.len() <= 63);
+        let lower_limit = lables.all(|label| label.len() >= 2);
+
+        return is_first_alphabetic
+            && is_last_alphanumeric
+            && is_interior_characters_valid
+            && upper_limit
+            && lower_limit;
+    }
+
+    mod tests {
+        #[test]
+        fn test_decode_no_change() -> Result<(), String> {
+            assert_eq!("www.rust-lang.org", super::encode("www.rust-lang.org"));
+            Ok(())
+        }
+
+        #[test]
+        fn test_encode() -> Result<(), String> {
+            assert_eq!(
+                "www.xn--mller-brombel-rmb4fg.de",
+                super::encode("www.müller-büromöbel.de")
+            );
+            Ok(())
+        }
+        #[test]
+        fn test_not_truncated() -> Result<(), String> {
+            assert_eq!(
+                "www.rust-lang.org",
+                super::truncate("www.rust-lang.org".to_string()),
+                "The should not be any changes!"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn test_truncate_port() -> Result<(), String> {
+            assert_eq!(
+                "www.rust-lang.org",
+                super::truncate("www.rust-lang.org:443".to_string()),
+                "The port was not cut off!"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn test_truncate_uri() -> Result<(), String> {
+            assert_eq!(
+                "www.rust-lang.org",
+                super::truncate("www.rust-lang.org/community".to_string()),
+                "The request uri was not cut off!"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn test_validate_valid() -> Result<(), String> {
+            assert!(
+                super::validate(&String::from("rfc-1035.ietf.org")),
+                "Rejected vaid domain!"
+            );
+
+            Ok(())
+        }
+        #[test]
+        fn test_validate_letter_or_digit() -> Result<(), String> {
+            assert!(
+                !super::validate(&String::from("rfc1035-.ietf.org")),
+                "At least one labe does not end with a letter or a digit!"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn test_validate_letter() -> Result<(), String> {
+            assert!(
+                !super::validate(&String::from("1035.ietf.org")),
+                "Domain must start with a letter!"
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn test_validate_letter1() -> Result<(), String> {
+            assert!(
+                !super::validate(&String::from("-1035.ietf.org")),
+                "Domain must start with a letter!"
+            );
+            Ok(())
+        }
+        #[test]
+        fn test_validate_valid_chars() -> Result<(), String> {
+            assert!(
+                !super::validate(&String::from("rfc1035.i?tf.org")),
+                "Domain must only contain letters digits or hivens!"
+            );
+            Ok(())
+        }
+        #[test]
+        fn test_validate_short() -> Result<(), String> {
+            assert!(
+                !super::validate(&String::from("t.org")),
+                "Domains must be longer than 1 character!"
+            );
+            Ok(())
+        }
+        #[test]
+        fn test_validate_long() -> Result<(), String> {
+            assert!(
+                !super::validate(&String::from(
+                    "rfc---------------------------------------------------------1035.ietf.org"
+                )),
+                "Domains must be shorter than 64 character!"
+            );
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
     use std::collections::HashSet;
-    use std::fs;
 
-    #[derive(Serialize, Deserialize, Debug, Clone)]
-    struct ParseConfig {
-        raw: Vec<String>,
-        parsed: Vec<String>,
+    #[test]
+    fn test_parse_valid() -> Result<(), String> {
+        let raw = vec![
+            String::from("rust-lang.org"),
+            String::from("docs.rs"),
+            String::from("xn--mller-brombel-rmb4fg.de"),
+        ];
+        let want = HashSet::from_iter(raw.clone());
+        let have = super::parse(raw.join("\n"));
+        assert_eq!(want, have);
+        Ok(())
     }
 
     #[test]
-    fn test_parse() -> Result<(), String> {
-        let config_path =
-            fs::read_to_string("./testdata/parse.json").expect("Test config file is not found.");
-        let test_config: ParseConfig =
-            serde_yaml::from_str(config_path.as_str()).expect("Test config is not valid.");
-        let raw = test_config.raw.join("\n");
-        let want = HashSet::from_iter(test_config.parsed);
+    fn test_parse_invaid() -> Result<(), String> {
+        let raw = vec![
+            String::from("127.0.0.1"),
+            String::from("::1"),
+            String::from("#doc.rust-lang.org"),
+            String::from("&action=confection_send_data&"),
+            String::from("-analytics/analytics."),
+            String::from(".php?action_name="),
+            String::from("/_log?ocid="),
+            String::from("||seekingalpha.com/mone_event"),
+            String::from(
+                "rfc---------------------------------------------------------1035.ietf.org",
+            ),
+            String::from("t.org"),
+            String::from("rfc1035.i?tf.org"),
+            String::from("rfc1035-.ietf.org"),
+            String::from("1035.ietf.org"),
+        ];
+        let want = HashSet::new();
+        let have = super::parse(raw.join("\n"));
+        assert_eq!(want, have);
+        Ok(())
+    }
 
-        let have = super::parse(raw);
-        assert_eq!(want, have, "Parsed data does not match expected result!");
+    #[test]
+    fn test_parse_truncate() -> Result<(), String> {
+        let raw = vec![
+            String::from("adserver.example.com #example.com - Advertising"),
+            String::from("www.reddit.com/r/learnrust/"),
+            String::from("www.rust-lang.org:443"),
+            String::from("www.rfc-editor.org.")
+        ];
+        let want = HashSet::from_iter([
+            String::from("adserver.example.com"),
+            String::from("www.reddit.com"),
+            String::from("www.rust-lang.org"),
+            String::from("www.rfc-editor.org"),
+        ]);
+        let have = super::parse(raw.join("\n"));
+        assert_eq!(want, have);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_punicode() -> Result<(), String> {
+        let raw = vec![String::from("www.müller-büromöbel.de")];
+        let want = HashSet::from_iter([String::from("www.xn--mller-brombel-rmb4fg.de")]);
+        let have = super::parse(raw.join("\n"));
+        assert_eq!(want, have);
         Ok(())
     }
 }

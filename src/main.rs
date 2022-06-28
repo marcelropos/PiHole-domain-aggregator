@@ -5,8 +5,6 @@ use lib::thread::ThreadPool;
 use std::fs;
 use std::io::Write;
 
-use regex::Regex;
-
 mod lib;
 
 const CONFIG_PATH: &str = "./data/config.yml";
@@ -36,13 +34,9 @@ fn main() -> Result<(), MyErrors> {
 
 /// Creates all addlists as in the givn Config definded.
 fn run(config: Config) -> Result<(), MyErrors> {
-    let want = Regex::new(r"(\.?[a-z0-9-]+)+\.[a-z]+").expect("Valid regex pattern");
-    let not_want = Regex::new(r"(/|=|\*|\?|\$|,|!)").expect("Valid regex pattern");
-
     let pool = ThreadPool::new(config.threads)?;
     for (addlist_name, _) in config.addlist.iter() {
-        let addlist_config =
-            AddlistConfig::new(addlist_name, config.clone(), want.clone(), not_want.clone());
+        let addlist_config = AddlistConfig::new(addlist_name, config.clone());
         pool.execute(|| {
             let data = addlist(&addlist_config);
             write_to_file(addlist_config, data);
@@ -64,7 +58,7 @@ fn write_to_file(addlist_config: AddlistConfig, mut data: Vec<String>) {
         data.sort();
 
         for line in data {
-            file.write_all(line.as_bytes())
+            file.write_all((line + "\r\n").as_bytes())
                 .expect("Unable to write to file");
         }
     }
