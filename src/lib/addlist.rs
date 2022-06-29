@@ -151,9 +151,9 @@ mod domain_validation {
             result = str
         }
         result
-        .strip_suffix(".")
-        .unwrap_or_else(|| result.as_str())
-        .to_string()
+            .strip_suffix(".")
+            .unwrap_or_else(|| result.as_str())
+            .to_string()
     }
 
     /// Validates domain as in rfc1035 section 2.3.1. defined.
@@ -178,7 +178,7 @@ mod domain_validation {
             .clone()
             .all(|label| label.chars().all(|c| c.is_alphanumeric() || c == '-'));
         let upper_limit = lables.clone().all(|label| label.len() <= 63);
-        let lower_limit = lables.all(|label| label.len() >= 2);
+        let lower_limit = lables.all(|label| label.len() >= 1);
 
         return is_first_alphabetic
             && is_last_alphanumeric
@@ -344,7 +344,7 @@ mod tests {
             String::from("adserver.example.com #example.com - Advertising"),
             String::from("www.reddit.com/r/learnrust/"),
             String::from("www.rust-lang.org:443"),
-            String::from("www.rfc-editor.org.")
+            String::from("www.rfc-editor.org."),
         ];
         let want = HashSet::from_iter([
             String::from("adserver.example.com"),
