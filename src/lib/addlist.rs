@@ -156,10 +156,9 @@ mod domain_validation {
             .to_string()
     }
 
-    /// Validates domain as in rfc1035 section 2.3.1. defined.
+    /// Validates domain as in rfc1035 defined.
     pub fn validate(domain: &String) -> bool {
         let mut lables = domain.split(".");
-
         let is_first_alphabetic = lables.clone().all(|label| {
             label
                 .chars()
@@ -179,12 +178,16 @@ mod domain_validation {
             .all(|label| label.chars().all(|c| c.is_alphanumeric() || c == '-'));
         let upper_limit = lables.clone().all(|label| label.len() <= 63);
         let lower_limit = lables.all(|label| label.len() >= 1);
+        let total_upper_limit = domain.chars().filter(|c| c.to_string() != ".").count() <= 255;
+        let contains_dot = domain.contains(".");
 
-        return is_first_alphabetic
+        contains_dot
+            && is_first_alphabetic
             && is_last_alphanumeric
             && is_interior_characters_valid
             && upper_limit
-            && lower_limit;
+            && lower_limit
+            && total_upper_limit
     }
 
     mod tests {
@@ -278,7 +281,7 @@ mod domain_validation {
         #[test]
         fn test_validate_short() -> Result<(), String> {
             assert!(
-                !super::validate(&String::from("t.org")),
+                !super::validate(&String::from(".org")),
                 "Domains must be longer than 1 character!"
             );
             Ok(())
@@ -306,6 +309,8 @@ mod tests {
             String::from("rust-lang.org"),
             String::from("docs.rs"),
             String::from("xn--mller-brombel-rmb4fg.de"),
+            String::from("t.org"),
+            String::from("aa") + ".ccccc".repeat(50).as_str() + ".com",
         ];
         let want = HashSet::from_iter(raw.clone());
         let have = super::parse(raw.join("\n"));
@@ -327,10 +332,10 @@ mod tests {
             String::from(
                 "rfc---------------------------------------------------------1035.ietf.org",
             ),
-            String::from("t.org"),
-            String::from("rfc1035.i?tf.org"),
+            String::from("rfc1035.?itf.org"),
             String::from("rfc1035-.ietf.org"),
             String::from("1035.ietf.org"),
+            String::from("aac") + ".ccccc".repeat(50).as_str() + ".com",
         ];
         let want = HashSet::new();
         let have = super::parse(raw.join("\n"));
