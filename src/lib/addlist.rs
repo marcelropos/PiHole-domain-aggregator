@@ -315,6 +315,7 @@ mod domain_validation {
 
 #[cfg(test)]
 mod tests {
+    use super::super::config::Config;
     use std::collections::HashSet;
 
     #[test]
@@ -381,6 +382,33 @@ mod tests {
         let raw = vec![String::from("www.müller-büromöbel.de")];
         let want = HashSet::from_iter([String::from("www.xn--mller-brombel-rmb4fg.de")]);
         let have = super::parse(raw.join("\n"));
+        assert_eq!(want, have);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mutate() -> Result<(), String> {
+        let premut = HashSet::from_iter([
+            String::from("a.com"),
+            String::from("b.com"),
+            String::from("c.com"),
+        ]);
+        let mut config = Config::default();
+        config.prefix = None;
+        config.suffix = None;
+        let addlist_config = super::AddlistConfig {
+            name: String::from("New"),
+            config
+        };
+        let want = vec![
+            String::from("a.com"),
+            String::from("b.com"),
+            String::from("c.com"),
+            String::from("www.a.com"),
+            String::from("www.b.com"),
+            String::from("www.c.com"),
+        ];
+        let have = super::mutate(&addlist_config, premut);
         assert_eq!(want, have);
         Ok(())
     }
