@@ -61,7 +61,6 @@ fn write_to_file(addlist_config: AddlistConfig, mut data: Vec<String>) {
         "{}/{}.addlist",
         addlist_config.config.path, addlist_config.name
     )) {
-        data.sort();
 
         for line in data {
             file.write_all((line + "\r\n").as_bytes())
