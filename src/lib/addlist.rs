@@ -90,15 +90,22 @@ fn parse(raw_data: String) -> HashSet<String> {
         .collect()
 }
 
-/// Normalises domains and adds prefix and sufix.
+/// Muatates domains based on config.
+///
+/// Adds prefix and suffix as in the configuration defined.
+/// Converts the Set of domains to a sorted vector.
+/// Add/Remove the subdomain `www.` to have both in the addlist.
 fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
     let mut no_prefix: Vec<String> = domains
         .into_iter()
         .map(|domain| {
             if domain.split(".").count() == 3 && domain.starts_with("www.") {
-                domain[4..].to_string()
+                domain
+                    .strip_prefix("www.")
+                    .unwrap_or_else(|| domain.as_str())
+                    .to_string()
             } else {
-                domain.to_string()
+                domain
             }
         })
         .collect();
