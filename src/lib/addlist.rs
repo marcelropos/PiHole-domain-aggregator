@@ -3,6 +3,11 @@ use reqwest::blocking::Client;
 use std::collections::HashSet;
 use std::{thread, time};
 
+pub struct Addlist {
+    pub name: String,
+    pub list: Vec<String>,
+}
+
 pub struct AddlistConfig {
     pub name: String,
     pub config: Config,
@@ -29,10 +34,8 @@ impl AddlistConfig {
         }
     }
 }
-/// Generate Addlist
-///
-/// Writes generates addlist as defined in the config.
-pub fn addlist(config: &AddlistConfig) -> Vec<String> {
+/// Creates Addlist
+pub fn addlist(config: AddlistConfig) -> Addlist {
     let client = Client::new();
 
     let data = config
@@ -44,7 +47,11 @@ pub fn addlist(config: &AddlistConfig) -> Vec<String> {
         .flat_map(|url| fetch(url, &client, config.config.delay))
         .flat_map(|data| parse(data))
         .collect();
-    mutate(&config, data)
+
+    Addlist {
+        list: mutate(&config, data),
+        name: config.name,
+    }
 }
 
 /// Fetches raw domain data
