@@ -12,17 +12,23 @@ const CONFIG_PATH: &str = "./data/config.yml";
 /// Reads and parses the configuration.
 ///
 /// After a valid configuration is parsed, the program will be started.
+///
+/// # Errors
+/// This function will throw an error if:
+/// - The configuration is not valid.
+/// - If no configuration was found.
+/// - Default configuration could not be created.
 fn main() -> Result<(), MyErrors> {
     match fs::read_to_string(CONFIG_PATH) {
         Ok(config) => match serde_yaml::from_str(&config) {
             Ok(config) => run(config),
-            Err(err) => Err(MyErrors::FailedToParseConfig(err.to_string())),
+            Err(err) => Err(err.into()),
         },
         Err(_) => {
             let config = Config::default();
             let serialized = serde_yaml::to_string(&config).unwrap(); //This will newer fail
             if let Err(err) = fs::write(CONFIG_PATH, serialized) {
-                Err(MyErrors::FailedToCreateConfig(err.to_string()))
+                Err(err.into())
             } else {
                 Err(MyErrors::NoCofigurationFound(String::from(
                     "Created default config. Please insert your Addlists and restart",
