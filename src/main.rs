@@ -54,17 +54,11 @@ fn run(config: Config) -> Result<(), MyErrors> {
 
 /// Writes addlist to file.
 ///
-/// # Panics
-/// If the path to the file does not exist or no write permissions are available, the method panics.
-fn write_to_file(addlist_config: AddlistConfig, mut data: Vec<String>) {
-    if let Ok(mut file) = fs::File::create(format!(
-        "{}/{}.addlist",
-        addlist_config.config.path, addlist_config.name
-    )) {
-
-        for line in data {
-            file.write_all((line + "\r\n").as_bytes())
-                .expect("Unable to write to file");
-        }
+/// # Errors
+/// This function will return the first error of non-ErrorKind::Interrupted kind that [write] returns.
+fn write_to_file(config: &Config, addlist: Addlist) -> std::io::Result<()> {
+    if let Ok(mut file) = fs::File::create(format!("{}/{}.addlist", config.path, addlist.name)) {
+        file.write_all(addlist.list.join("\r\n").as_bytes())?
     }
+    Ok(())
 }
