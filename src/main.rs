@@ -42,7 +42,8 @@ fn main() -> Result<(), MyErrors> {
 /// Creates all addlists as in the givn Config definded.
 ///
 /// # Errors
-/// This function will return the first [io::errorkind] error if it fails to write the addlists to the filesystem.
+/// - This function will return the first `io::errorkind` error if it fails to write the addlists to the filesystem.
+/// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
 fn run(config: Config) -> Result<(), MyErrors> {
     let receiver;
     {
