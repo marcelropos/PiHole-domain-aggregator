@@ -77,8 +77,7 @@ fn run(config: Config) -> Result<(), MyErrors> {
 /// # Errors
 /// This function will return the first error of non-ErrorKind::Interrupted kind that [write] returns.
 fn write_to_file(config: &Config, addlist: Addlist) -> std::io::Result<()> {
-    if let Ok(mut file) = fs::File::create(format!("{}/{}.addlist", config.path, addlist.name)) {
-        file.write_all(addlist.list.join("\r\n").as_bytes())?
-    }
+    let mut file = fs::File::create(format!("{}/{}.addlist", config.path, addlist.name))?;
+    file.write_all(addlist.list.join("\r\n").as_bytes())?;
     Ok(())
 }
