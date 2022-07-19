@@ -1,10 +1,10 @@
 use lib::addlist::{addlist, Addlist, AddlistConfig};
-use lib::config::Config;
+use std::sync::Arc;
+use lib::config::{Config, self};
 use lib::errors::MyErrors;
 use lib::thread::ThreadPool;
 use std::fs;
 use std::io::Write;
-use std::sync::mpsc::sync_channel;
 
 mod lib;
 
@@ -45,31 +45,17 @@ fn main() -> Result<(), MyErrors> {
 /// - This function will return the first `io::errorkind` error if it fails to write the addlists to the filesystem.
 /// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
 fn run(config: Config) -> Result<(), MyErrors> {
-    let receiver;
-    {
-        let sender;
-        let pool = ThreadPool::new(config.threads)?;
-        (sender, receiver) = sync_channel(config.addlist.iter().count());
-
-        for (addlist_name, _) in config.addlist.iter() {
-            let addlist_config = AddlistConfig::new(addlist_name, config.clone());
-            let thread_sender = sender.clone();
-            pool.execute(move || {
-                let data = addlist(addlist_config);
-                if let Some(err) = thread_sender.send(data).err() {
-                    eprintln!("{}", err)
-                }
-            })
-        }
+    let pool = ThreadPool::new(config.threads)?;
+    for (addlist_name, _) in config.addlist.iter() {
+        let config = config.clone();
+        let addlist_config = AddlistConfig::new(addlist_name, config.clone());
+        pool.execute(move || {
+            let data = addlist(addlist_config);
+            write_to_file(&config, data);
+        })
     }
 
-    match receiver
-        .iter()
-        .try_for_each(|addlist| write_to_file(&config, addlist))
-    {
-        Ok(_) => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    Ok(())
 }
 
 /// Writes addlist to file.
