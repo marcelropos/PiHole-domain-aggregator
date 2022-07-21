@@ -19,17 +19,17 @@ impl ::std::default::Default for Config {
     fn default() -> Self {
         let addlist = vec![
             (
-                "AddlistOne".to_string(),
+                "AddlistOne".to_owned(),
                 vec![
-                    "https://1.example.local".to_string(),
-                    "https://2.example.local".to_string(),
+                    "https://1.example.local".to_owned(),
+                    "https://2.example.local".to_owned(),
                 ],
             ),
             (
-                "AddlistTwo".to_string(),
+                "AddlistTwo".to_owned(),
                 vec![
-                    "https://3.example.local".to_string(),
-                    "https://4.example.local".to_string(),
+                    "https://3.example.local".to_owned(),
+                    "https://4.example.local".to_owned(),
                 ],
             ),
         ];
@@ -40,12 +40,12 @@ impl ::std::default::Default for Config {
                 .unwrap_or_else(|| NonZeroUsize::new(1).unwrap()),
             addlist: addlist,
             whitelist: Some(vec![
-                "https://whitelist1.example.local".to_string(),
-                "https://whitelist2.example.local".to_string(),
+                "https://whitelist1.example.local".to_owned(),
+                "https://whitelist2.example.local".to_owned(),
             ]),
             path: "./".to_string(),
-            prefix: Some("127.0.0.1 ".to_string()),
-            suffix: Some("# Some text here.".to_string()),
+            prefix: Some("127.0.0.1 ".to_owned()),
+            suffix: Some("# Some text here.".to_owned()),
             delay: Some(NonZeroU64::new(1000).unwrap()),
         }
     }
