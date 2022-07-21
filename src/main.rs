@@ -1,41 +1,53 @@
+mod lib;
+
 use lib::addlist::{addlist, Addlist, AddlistConfig};
 use lib::config::Config;
 use lib::errors::MyErrors;
 use lib::thread::ThreadPool;
+use serde_json::error::Category;
 use std::fs;
+use std::io::ErrorKind;
 use std::io::Write;
 use std::sync::Arc;
 
-mod lib;
+const CONFIG_PATH: &str = "./data/config";
 
-const CONFIG_PATH: &str = "./data/config.yml";
-
-/// Reads and parses the configuration.
-///
 /// After a valid configuration is parsed, the program will be started.
 ///
 /// # Errors
 /// This function will throw an error if:
-/// - The configuration is not valid.
-/// - If no configuration was found.
-/// - Default configuration could not be created.
+/// - [MyErrors::ConfigErr] If no configuration was found, is not valid or could not parsed.
+/// - [MyErrors::IoErr] with [std::io::ErrorKind] information if config could not be accessed.
 fn main() -> Result<(), MyErrors> {
+    let config = parse_config()?;
+    run(config)
+}
+
+/// Reads and parses the configuration.
+fn parse_config() -> Result<Config, MyErrors> {
     match fs::read_to_string(CONFIG_PATH) {
-        Ok(config) => match serde_yaml::from_str(&config) {
-            Ok(config) => run(config),
-            Err(err) => Err(err.into()),
+        Ok(raw) => match serde_json::from_str(&raw) {
+            Ok(config) => Ok(config),
+            Err(err) => match err.classify() {
+                Category::Syntax => match serde_yaml::from_str(&raw) {
+                    Ok(config) => Ok(config),
+                    Err(err) => Err(err.into()),
+                },
+                Category::Data => Err(err.into()),
+                Category::Io | Category::Eof => unreachable!(),
+            },
         },
-        Err(_) => {
-            let config = Config::default();
-            let serialized = serde_yaml::to_string(&config).unwrap(); //This will newer fail
-            if let Err(err) = fs::write(CONFIG_PATH, serialized) {
-                Err(err.into())
-            } else {
-                Err(MyErrors::NoCofigurationFound(String::from(
-                    "Created default config. Please insert your Addlists and restart",
-                )))
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => {
+                let config = Config::default();
+                let serialized = serde_json::to_string_pretty(&config).unwrap();
+                fs::write(CONFIG_PATH, serialized)?;
+                Err(MyErrors::ConfigErr(
+                    "No config found! Created default config.".to_owned(),
+                ))
             }
-        }
+            _ => Err(err.into()),
+        },
     }
 }
 

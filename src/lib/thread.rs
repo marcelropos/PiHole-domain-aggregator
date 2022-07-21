@@ -22,7 +22,7 @@ impl ThreadPool {
     pub fn new(size: NonZeroUsize) -> Result<ThreadPool, MyErrors> {
         let max = num_cpus::get() / 2;
         if max < size.get() {
-            return Err(MyErrors::InvalidConfig(format!(
+            return Err(MyErrors::ConfigErr(format!(
                 "The `threads` size must be lower than {}",
                 max
             )));
