@@ -1,6 +1,7 @@
 use super::config::Config;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::{thread, time};
 
 pub struct Addlist {
@@ -10,11 +11,11 @@ pub struct Addlist {
 
 pub struct AddlistConfig {
     pub name: String,
-    pub config: Config,
+    pub config: Arc<Config>,
 }
 
 impl AddlistConfig {
-    pub fn new(name: &String, config: Config) -> AddlistConfig {
+    pub fn new(name: &String, config: Arc<Config>) -> AddlistConfig {
         AddlistConfig {
             name: name.to_string(),
             config,
@@ -317,6 +318,7 @@ mod domain_validation {
 mod tests {
     use super::super::config::Config;
     use std::collections::HashSet;
+    use std::sync::Arc;
 
     #[test]
     fn test_parse_valid() -> Result<(), String> {
@@ -398,7 +400,7 @@ mod tests {
         config.suffix = None;
         let addlist_config = super::AddlistConfig {
             name: String::from("New"),
-            config
+            config: Arc::new(config),
         };
         let want = vec![
             String::from("a.com"),

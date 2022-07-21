@@ -46,8 +46,9 @@ fn main() -> Result<(), MyErrors> {
 /// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
 fn run(config: Config) -> Result<(), MyErrors> {
     let pool = ThreadPool::new(config.threads)?;
+    let config = Arc::new(config);
+
     for (addlist_name, _) in config.addlist.iter() {
-        let config = config.clone();
         let addlist_config = AddlistConfig::new(addlist_name, config.clone());
         pool.execute(move || {
             let data = addlist(addlist_config);
