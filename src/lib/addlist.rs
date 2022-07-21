@@ -316,7 +316,7 @@ mod domain_validation {
 
 #[cfg(test)]
 mod tests {
-    use super::super::config::Config;
+    use super::Config;
     use std::collections::HashSet;
     use std::sync::Arc;
 
