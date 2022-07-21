@@ -37,7 +37,7 @@ impl AddlistConfig {
     }
 }
 /// Creates Addlist
-pub fn addlist(config: AddlistConfig) -> Addlist {
+pub fn addlist(config: &AddlistConfig) -> Addlist {
     let client = Client::new();
 
     let data = config
@@ -52,7 +52,7 @@ pub fn addlist(config: AddlistConfig) -> Addlist {
 
     Addlist {
         list: mutate(&config, data),
-        name: config.name,
+        name: config.name.to_owned(),
     }
 }
 

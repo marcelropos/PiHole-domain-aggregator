@@ -1,6 +1,6 @@
 use lib::addlist::{addlist, Addlist, AddlistConfig};
 use std::sync::Arc;
-use lib::config::{Config, self};
+use lib::config::Config;
 use lib::errors::MyErrors;
 use lib::thread::ThreadPool;
 use std::fs;
@@ -42,17 +42,18 @@ fn main() -> Result<(), MyErrors> {
 /// Creates all addlists as in the givn Config definded.
 ///
 /// # Errors
-/// - This function will return the first `io::errorkind` error if it fails to write the addlists to the filesystem.
 /// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
 fn run(config: Config) -> Result<(), MyErrors> {
     let pool = ThreadPool::new(config.threads)?;
     let config = Arc::new(config);
-
     for (addlist_name, _) in config.addlist.iter() {
         let addlist_config = AddlistConfig::new(addlist_name, config.clone());
+
         pool.execute(move || {
-            let data = addlist(addlist_config);
-            write_to_file(&config, data);
+            let data = addlist(&addlist_config);
+            if let Some(err) = write_to_file(addlist_config, data).err() {
+                eprint!("{:?}", err);
+            }
         })
     }
 
@@ -63,8 +64,8 @@ fn run(config: Config) -> Result<(), MyErrors> {
 ///
 /// # Errors
 /// This function will return the first error of non-ErrorKind::Interrupted kind that [write] returns.
-fn write_to_file(config: &Config, addlist: Addlist) -> std::io::Result<()> {
-    let mut file = fs::File::create(format!("{}/{}.addlist", config.path, addlist.name))?;
+fn write_to_file(config: AddlistConfig, addlist: Addlist) -> std::io::Result<()> {
+    let mut file = fs::File::create(format!("{}/{}.addlist", config.config.path, addlist.name))?;
     file.write_all(addlist.list.join("\r\n").as_bytes())?;
     Ok(())
 }
