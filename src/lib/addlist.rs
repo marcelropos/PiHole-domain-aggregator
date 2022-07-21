@@ -122,6 +122,9 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 }
 
 mod domain_validation {
+    use std::num::NonZeroUsize;
+
+    const VALID_CHARS: [char; 2] = ['-', '.'];
 
     /// Recives possible IDNs and converts it to punicode if needed.
     pub fn encode(decoded: &str) -> String {
@@ -143,28 +146,24 @@ mod domain_validation {
     }
 
     /// Truncates invalid characters and returns the valid part.
-    pub fn truncate(str: String) -> String {
-        let valid: String = str
+    pub fn truncate(raw: String) -> String {
+        let invalid: String = raw
             .chars()
-            .filter(|c| !char::is_ascii_alphanumeric(&c.clone()))
-            .map(|c| c.to_string())
-            .filter(|c| !["-", "."].contains(&c.as_str()))
+            .filter(|character| !character.is_ascii_alphanumeric())
+            .filter(|character| !VALID_CHARS.contains(&character))
             .take(1)
             .collect();
 
-        let result;
-        if valid != "" {
-            match str.find(valid.as_str()) {
-                Some(index) => result = str[..index].to_string(),
-                None => result = str,
-            }
-        } else {
-            result = str
-        }
-        result
-            .strip_suffix(".")
-            .unwrap_or_else(|| result.as_str())
-            .to_string()
+        let raw = raw
+            .find(invalid.as_str())
+            .map(|index| NonZeroUsize::new(index))
+            .and_then(|index| index)
+            .and_then(|index| Some(raw[..index.get()].to_owned()))
+            .unwrap_or(raw);
+
+        raw.strip_suffix(".")
+            .and_then(|truncated| Some(truncated.to_owned()))
+            .unwrap_or(raw)
     }
 
     /// Validates domain as in rfc1035 defined.
