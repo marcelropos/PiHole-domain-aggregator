@@ -1,6 +1,7 @@
 use super::config::Config;
 use core::num::NonZeroU64;
 use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::{thread, time};
@@ -11,6 +12,12 @@ const DOT: char = '.';
 pub struct Addlist {
     pub name: String,
     pub list: Vec<String>,
+}
+
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct AddlistSources {
+    pub addlist: HashSet<String>,
+    pub whitelist: Option<HashSet<String>>,
 }
 
 pub struct AddlistConfig {
@@ -40,17 +47,22 @@ impl AddlistConfig {
     }
 }
 /// Creates Addlist
-pub fn addlist(config: &AddlistConfig, whitelist: Arc<HashSet<String>>) -> Option<Addlist> {
+pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -> Option<Addlist> {
     let client = Client::new();
+    let sources = config.config.addlist.get(&config.name)?;
+    let local_whitelist = match whitelist(sources.whitelist.clone(), &config.config) {
+        Some(local_whitelist) => local_whitelist,
+        None => HashSet::new(),
+    };
+    let local_reduced_whitelist: HashSet<_> = local_whitelist.difference(&global_whitelist).collect();
 
-    let data = config
-        .config
+    let data = sources
         .addlist
-        .get(&config.name)?
         .iter()
         .flat_map(|url| fetch(url, &client, config.config.delay))
         .flat_map(parse)
-        .filter(|domain| !whitelist.contains(domain))
+        .filter(|domain| !global_whitelist.contains(domain))
+        .filter(|domain| !local_reduced_whitelist.contains(domain))
         .collect();
 
     Some(Addlist {
@@ -60,10 +72,9 @@ pub fn addlist(config: &AddlistConfig, whitelist: Arc<HashSet<String>>) -> Optio
 }
 
 /// Creates Whitelist
-pub fn whitelist(config: &mut Config) -> Option<HashSet<String>> {
+pub fn whitelist(mut sources: Option<HashSet<String>>, config: &Config) -> Option<HashSet<String>> {
     let client = Client::new();
-    let whitelist = config
-        .whitelist
+    let whitelist = sources
         .take()?
         .iter()
         .flat_map(|url| fetch(url, &client, config.delay))
@@ -330,6 +341,8 @@ mod domain_validation {
 
 #[cfg(test)]
 mod tests {
+    use crate::lib::addlist::AddlistSources;
+
     use super::Config;
     use super::{Addlist, AddlistConfig};
     use mockito::mock;
@@ -354,7 +367,10 @@ mod tests {
         let mut addlist = HashMap::new();
         addlist.insert(
             "Addlist".to_owned(),
-            HashSet::from_iter(vec![url.to_owned() + "/addlist"]),
+            AddlistSources {
+                addlist: HashSet::from_iter(vec![url.to_owned() + "/addlist"]),
+                whitelist: None,
+            },
         );
         config.addlist = addlist;
 
@@ -372,6 +388,54 @@ mod tests {
         });
 
         mock.assert();
+        assert_eq!(want, have);
+        Ok(())
+    }
+
+    #[test]
+    fn test_addlist_local_whitelist() -> Result<(), String> {
+        // Set up environment
+        let mock1 = mock("GET", "/addlist")
+            .with_status(200)
+            .with_body("docs.rs\nwww.rust-lang.org\nt.org")
+            .create();
+        let mock2 = mock("GET", "/whitelist")
+            .with_status(200)
+            .with_body("docs.rs\nwww.rust-lang.org")
+            .create();
+
+        let url = &mockito::server_url();
+
+        let mut config = Config::default();
+        config.delay = None;
+        config.prefix = None;
+        config.suffix = None;
+
+        let mut addlist = HashMap::new();
+        addlist.insert(
+            "Addlist".to_owned(),
+            AddlistSources {
+                addlist: HashSet::from_iter(vec![url.to_owned() + "/addlist"]),
+                whitelist: Some(HashSet::from_iter(vec![url.to_owned() + "/whitelist"])),
+            },
+        );
+        config.addlist = addlist;
+
+        let config = AddlistConfig {
+            name: "Addlist".to_owned(),
+            config: Arc::new(config),
+        };
+
+        let whitelist = Arc::new(HashSet::from_iter(vec!["www.rust-lang.org".to_owned()]));
+
+        let have = super::addlist(&config, whitelist);
+        let want = Some(Addlist {
+            name: "Addlist".to_owned(),
+            list: vec!["t.org".to_owned(), "www.t.org".to_owned()],
+        });
+
+        mock1.assert();
+        mock2.assert();
         assert_eq!(want, have);
         Ok(())
     }

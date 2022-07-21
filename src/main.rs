@@ -55,11 +55,11 @@ fn parse_config() -> Result<Config, MyErrors> {
 ///
 /// # Errors
 /// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
-fn run(mut config: Config) -> Result<(), MyErrors> {
+fn run(config: Config) -> Result<(), MyErrors> {
     let pool = ThreadPool::new(config.threads)?;
-    let whitelist = Arc::new(whitelist(&mut config).unwrap_or_default());
 
     let config = Arc::new(config);
+    let whitelist = Arc::new(whitelist(config.whitelist.clone(), &config).unwrap_or_default());
     for (addlist_name, _) in config.addlist.iter() {
         let addlist_config = AddlistConfig::new(addlist_name, config.clone());
         let whitelist = whitelist.clone();
