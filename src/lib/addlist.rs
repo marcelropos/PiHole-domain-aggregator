@@ -323,11 +323,11 @@ mod tests {
     #[test]
     fn test_parse_valid() -> Result<(), String> {
         let raw = vec![
-            String::from("rust-lang.org"),
-            String::from("docs.rs"),
-            String::from("xn--mller-brombel-rmb4fg.de"),
-            String::from("t.org"),
             String::from("aa") + ".ccccc".repeat(50).as_str() + ".com",
+            String::from("docs.rs"),
+            String::from("rust-lang.org"),
+            String::from("t.org"),
+            String::from("xn--mller-brombel-rmb4fg.de"),
         ];
         let want = HashSet::from_iter(raw.clone());
         let have = super::parse(raw.join("\n"));
@@ -338,21 +338,21 @@ mod tests {
     #[test]
     fn test_parse_invaid() -> Result<(), String> {
         let raw = vec![
-            String::from("127.0.0.1"),
-            String::from("::1"),
-            String::from("#doc.rust-lang.org"),
-            String::from("&action=confection_send_data&"),
             String::from("-analytics/analytics."),
+            String::from("::1"),
             String::from(".php?action_name="),
             String::from("/_log?ocid="),
+            String::from("&action=confection_send_data&"),
+            String::from("#doc.rust-lang.org"),
             String::from("||seekingalpha.com/mone_event"),
+            String::from("1035.ietf.org"),
+            String::from("127.0.0.1"),
+            String::from("aac") + ".ccccc".repeat(50).as_str() + ".com",
             String::from(
                 "rfc---------------------------------------------------------1035.ietf.org",
             ),
-            String::from("rfc1035.?itf.org"),
             String::from("rfc1035-.ietf.org"),
-            String::from("1035.ietf.org"),
-            String::from("aac") + ".ccccc".repeat(50).as_str() + ".com",
+            String::from("rfc1035.?itf.org"),
         ];
         let want = HashSet::new();
         let have = super::parse(raw.join("\n"));
@@ -365,14 +365,14 @@ mod tests {
         let raw = vec![
             String::from("adserver.example.com #example.com - Advertising"),
             String::from("www.reddit.com/r/learnrust/"),
-            String::from("www.rust-lang.org:443"),
             String::from("www.rfc-editor.org."),
+            String::from("www.rust-lang.org:443"),
         ];
         let want = HashSet::from_iter([
             String::from("adserver.example.com"),
             String::from("www.reddit.com"),
-            String::from("www.rust-lang.org"),
             String::from("www.rfc-editor.org"),
+            String::from("www.rust-lang.org"),
         ]);
         let have = super::parse(raw.join("\n"));
         assert_eq!(want, have);
