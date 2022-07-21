@@ -7,6 +7,7 @@ use std::{thread, time};
 
 const DOT: char = '.';
 
+#[derive(Eq, PartialEq, Debug)]
 pub struct Addlist {
     pub name: String,
     pub list: Vec<String>,
@@ -39,7 +40,7 @@ impl AddlistConfig {
     }
 }
 /// Creates Addlist
-pub fn addlist(config: &AddlistConfig) -> Option<Addlist> {
+pub fn addlist(config: &AddlistConfig, whitelist: Arc<HashSet<String>>) -> Option<Addlist> {
     let client = Client::new();
 
     let data = config
@@ -49,12 +50,26 @@ pub fn addlist(config: &AddlistConfig) -> Option<Addlist> {
         .iter()
         .flat_map(|url| fetch(url, &client, config.config.delay))
         .flat_map(parse)
+        .filter(|domain| !whitelist.contains(domain))
         .collect();
 
     Some(Addlist {
         list: mutate(config, data),
         name: config.name.to_owned(),
     })
+}
+
+/// Creates Whitelist
+pub fn whitelist(config: &mut Config) -> Option<HashSet<String>> {
+    let client = Client::new();
+    let whitelist = config
+        .whitelist
+        .take()?
+        .iter()
+        .flat_map(|url| fetch(url, &client, config.delay))
+        .flat_map(parse)
+        .collect();
+    Some(whitelist)
 }
 
 /// Fetches raw domain data
@@ -316,8 +331,50 @@ mod domain_validation {
 #[cfg(test)]
 mod tests {
     use super::Config;
-    use std::collections::HashSet;
+    use super::{Addlist, AddlistConfig};
+    use mockito::mock;
+    use std::collections::{HashMap, HashSet};
     use std::sync::Arc;
+
+    #[test]
+    fn test_addlist_whitelist() -> Result<(), String> {
+        // Set up environment
+        let mock = mock("GET", "/addlist")
+            .with_status(200)
+            .with_body("docs.rs\nwww.rust-lang.org")
+            .create();
+
+        let url = &mockito::server_url();
+
+        let mut config = Config::default();
+        config.delay = None;
+        config.prefix = None;
+        config.suffix = None;
+
+        let mut addlist = HashMap::new();
+        addlist.insert(
+            "Addlist".to_owned(),
+            HashSet::from_iter(vec![url.to_owned() + "/addlist"]),
+        );
+        config.addlist = addlist;
+
+        let config = AddlistConfig {
+            name: "Addlist".to_owned(),
+            config: Arc::new(config),
+        };
+
+        let whitelist = Arc::new(HashSet::from_iter(vec!["www.rust-lang.org".to_owned()]));
+
+        let have = super::addlist(&config, whitelist);
+        let want = Some(Addlist {
+            name: "Addlist".to_owned(),
+            list: vec!["docs.rs".to_owned(), "www.docs.rs".to_owned()],
+        });
+
+        mock.assert();
+        assert_eq!(want, have);
+        Ok(())
+    }
 
     #[test]
     fn test_parse_valid() -> Result<(), String> {
