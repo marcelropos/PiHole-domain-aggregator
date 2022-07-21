@@ -61,19 +61,11 @@ fn fetch(url: &String, client: &Client, delay: Option<NonZeroU64>) -> Option<Str
     if let Some(delay) = delay {
         thread::sleep(time::Duration::from_millis(delay.get()));
     }
-    match client.get(url).send() {
-        Ok(resp) => {
-            if resp.status() == 200 {
-                match resp.text() {
-                    Ok(text) => Some(text),
-                    Err(_) => None,
-                }
-            } else {
-                None
-            }
-        }
-        Err(_) => None,
+    let response = client.get(url).send().ok()?;
+    if response.status() == 200 {
+        return response.text().ok();
     }
+    None
 }
 
 /// Parses a raw data to a HashSet of valid domains.
