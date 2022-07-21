@@ -1,3 +1,4 @@
+use core::num::NonZeroUsize;
 use num_cpus;
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -17,23 +18,23 @@ impl ThreadPool {
     /// The size is the number of threads in the pool.
     ///
     /// # Errors
-    /// The ThreadPool creation failes when the number of threads is lower than 1 or grather than a half of all logical cores.
-    pub fn new(size: usize) -> Result<ThreadPool, MyErrors> {
+    /// The ThreadPool creation failes when the number of threads grather than a half of all logical cores.
+    pub fn new(size: NonZeroUsize) -> Result<ThreadPool, MyErrors> {
         let max = num_cpus::get() / 2;
-        if size < 1 || max < size {
-            return Err(MyErrors::InvalidConfig(String::from(format!(
-                "The `threads` size must be between 1 and {}",
+        if max < size.get() {
+            return Err(MyErrors::ConfigErr(format!(
+                "The `threads` size must be lower than {}",
                 max
-            ))));
+            )));
         }
 
         let (sender, receiver) = mpsc::channel();
 
         let receiver = Arc::new(Mutex::new(receiver));
 
-        let mut workers = Vec::with_capacity(size);
+        let mut workers = Vec::with_capacity(size.get());
 
-        for id in 0..size {
+        for id in 0..size.get() {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
@@ -53,7 +54,7 @@ impl ThreadPool {
 }
 
 /// Drops ThreadPool
-/// 
+///
 /// The TheadPool will only be dropped when all workers are finished.
 impl Drop for ThreadPool {
     fn drop(&mut self) {
