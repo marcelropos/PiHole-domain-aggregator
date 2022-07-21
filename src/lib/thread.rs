@@ -3,6 +3,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use worker::{Message, Worker};
+use core::num::NonZeroUsize;
 
 use super::errors::MyErrors;
 
@@ -17,12 +18,12 @@ impl ThreadPool {
     /// The size is the number of threads in the pool.
     ///
     /// # Errors
-    /// The ThreadPool creation failes when the number of threads is lower than 1 or grather than a half of all logical cores.
-    pub fn new(size: usize) -> Result<ThreadPool, MyErrors> {
+    /// The ThreadPool creation failes when the number of threads grather than a half of all logical cores.
+    pub fn new(size: NonZeroUsize) -> Result<ThreadPool, MyErrors> {
         let max = num_cpus::get() / 2;
-        if size < 1 || max < size {
+        if max < size.get() {
             return Err(MyErrors::InvalidConfig(String::from(format!(
-                "The `threads` size must be between 1 and {}",
+                "The `threads` size must be lower than {}",
                 max
             ))));
         }
@@ -31,9 +32,9 @@ impl ThreadPool {
 
         let receiver = Arc::new(Mutex::new(receiver));
 
-        let mut workers = Vec::with_capacity(size);
+        let mut workers = Vec::with_capacity(size.get());
 
-        for id in 0..size {
+        for id in 0..size.get() {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 

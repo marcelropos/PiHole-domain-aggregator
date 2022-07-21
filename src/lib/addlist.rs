@@ -1,4 +1,5 @@
 use super::config::Config;
+use core::num::NonZeroU64;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -56,8 +57,10 @@ pub fn addlist(config: AddlistConfig) -> Addlist {
 }
 
 /// Fetches raw domain data
-fn fetch(url: &String, client: &Client, delay: u64) -> Option<String> {
-    thread::sleep(time::Duration::from_millis(delay));
+fn fetch(url: &String, client: &Client, delay: Option<NonZeroU64>) -> Option<String> {
+    if let Some(delay) = delay {
+        thread::sleep(time::Duration::from_millis(delay.get()));
+    }
     match client.get(url).send() {
         Ok(resp) => {
             if resp.status() == 200 {
