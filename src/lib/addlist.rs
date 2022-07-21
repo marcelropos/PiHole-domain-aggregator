@@ -124,21 +124,22 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 mod domain_validation {
 
     /// Recives possible IDNs and converts it to punicode if needed.
-    pub fn encode(str: &str) -> String {
-        let part = str.split(".");
-        let encoded: Vec<String> = part.into_iter().map(|str| help_encode(str)).collect();
-        encoded.join(".")
+    pub fn encode(decoded: &str) -> String {
+        decoded
+            .split(".")
+            .into_iter()
+            .map(|decoded| help_encode(decoded))
+            .collect::<Vec<String>>()
+            .join(".")
     }
 
-    fn help_encode(str: &str) -> String {
-        if str.is_ascii() {
-            str.to_string()
-        } else {
-            match punycode::encode(str) {
-                Ok(str) => String::from("xn--") + str.as_str(),
-                Err(_) => str.to_string(),
-            }
+    fn help_encode(decoded: &str) -> String {
+        if decoded.is_ascii() {
+            return decoded.to_owned();
         }
+        return punycode::encode(decoded)
+            .and_then(|encoded| Ok("xn--".to_owned() + encoded.as_str()))
+            .unwrap_or_else(|_| decoded.to_owned());
     }
 
     /// Truncates invalid characters and returns the valid part.
