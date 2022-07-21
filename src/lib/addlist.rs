@@ -47,7 +47,7 @@ pub fn addlist(config: &AddlistConfig) -> Addlist {
         .filter(|list| list.0 == config.name)
         .flat_map(|list| &list.1)
         .flat_map(|url| fetch(url, &client, config.config.delay))
-        .flat_map(|data| parse(data))
+        .flat_map(|raw_data| parse(raw_data))
         .collect();
 
     Addlist {
