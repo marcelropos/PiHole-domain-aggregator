@@ -1,23 +1,21 @@
 use serde_yaml;
-use std::convert::Into;
-use std::io;
 
 #[derive(Debug)]
 pub enum MyErrors {
-    FailedToParseConfig(String),
+    ConfigErr(String),
     InvalidConfig(String),
-    FailedToCreateConfig(String),
+    IoErr(String),
     NoCofigurationFound(String),
-    FailedToCreateAddlist(String),
 }
 
-impl Into<MyErrors> for io::Error {
-    fn into(self) -> MyErrors {
-        MyErrors::FailedToCreateConfig(self.to_string())
+impl From<std::io::Error> for MyErrors {
+    fn from(err: std::io::Error) -> MyErrors {
+        MyErrors::IoErr(err.to_string())
     }
 }
-impl Into<MyErrors> for serde_yaml::Error {
-    fn into(self) -> MyErrors {
-        MyErrors::FailedToParseConfig(self.to_string())
+
+impl From<serde_yaml::Error> for MyErrors {
+    fn from(err: serde_yaml::Error) -> MyErrors {
+        MyErrors::ConfigErr(err.to_string())
     }
 }

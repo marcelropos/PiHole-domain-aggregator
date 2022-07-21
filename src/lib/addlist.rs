@@ -5,6 +5,8 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::{thread, time};
 
+const DOT: char = '.';
+
 pub struct Addlist {
     pub name: String,
     pub list: Vec<String>,
@@ -47,11 +49,11 @@ pub fn addlist(config: &AddlistConfig) -> Addlist {
         .filter(|list| list.0 == config.name)
         .flat_map(|list| &list.1)
         .flat_map(|url| fetch(url, &client, config.config.delay))
-        .flat_map(|raw_data| parse(raw_data))
+        .flat_map(parse)
         .collect();
 
     Addlist {
-        list: mutate(&config, data),
+        list: mutate(config, data),
         name: config.name.to_owned(),
     }
 }
@@ -75,14 +77,14 @@ fn parse(raw_data: String) -> HashSet<String> {
     raw_data
         .to_lowercase()
         .lines()
-        .map(|line| match line.find("#") {
+        .map(|line| match line.find('#') {
             Some(index) => line[..index].as_ref(),
             None => line,
         })
-        .flat_map(|line| line.split(" "))
-        .map(|entry| domain_validation::encode(entry))
-        .map(|entry| domain_validation::truncate(entry))
-        .filter(|domain| domain_validation::validate(domain))
+        .flat_map(|line| line.split(' '))
+        .map(domain_validation::encode)
+        .map(domain_validation::truncate)
+        .filter(|data| domain_validation::validate(data.as_str()))
         .collect()
 }
 
@@ -95,10 +97,10 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
     let mut no_prefix: Vec<String> = domains
         .into_iter()
         .map(|domain| {
-            if domain.split(".").count() == 3 && domain.starts_with("www.") {
+            if domain.split(DOT).count() == 3 && domain.starts_with("www.") {
                 domain
                     .strip_prefix("www.")
-                    .unwrap_or_else(|| domain.as_str())
+                    .unwrap_or(domain.as_str())
                     .to_string()
             } else {
                 domain
@@ -109,7 +111,7 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 
     let mut prefix: Vec<String> = no_prefix
         .iter()
-        .filter(|domain| domain.split(".").count() == 2 && !domain.starts_with("www."))
+        .filter(|domain| domain.split(DOT).count() == 2 && !domain.starts_with("www."))
         .map(|domain| format!("www.{}", domain))
         .collect();
     prefix.sort();
@@ -122,16 +124,19 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 }
 
 mod domain_validation {
+    use super::DOT;
     use std::num::NonZeroUsize;
 
-    const VALID_CHARS: [char; 2] = ['-', '.'];
+    const HYPHEN: char = '-';
+    const PUNY: &str = "xn--";
+    const VALID_CHARS: [char; 2] = [HYPHEN, DOT];
 
     /// Recives possible IDNs and converts it to punicode if needed.
     pub fn encode(decoded: &str) -> String {
         decoded
-            .split(".")
+            .split(DOT)
             .into_iter()
-            .map(|decoded| help_encode(decoded))
+            .map(help_encode)
             .collect::<Vec<String>>()
             .join(".")
     }
@@ -140,9 +145,9 @@ mod domain_validation {
         if decoded.is_ascii() {
             return decoded.to_owned();
         }
-        return punycode::encode(decoded)
-            .and_then(|encoded| Ok("xn--".to_owned() + encoded.as_str()))
-            .unwrap_or_else(|_| decoded.to_owned());
+        punycode::encode(decoded)
+            .map(|encoded| PUNY.to_owned() + encoded.as_str())
+            .unwrap_or_else(|_| decoded.to_owned())
     }
 
     /// Truncates invalid characters and returns the valid part.
@@ -150,29 +155,29 @@ mod domain_validation {
         let invalid: String = raw
             .chars()
             .filter(|character| !character.is_ascii_alphanumeric())
-            .filter(|character| !VALID_CHARS.contains(&character))
+            .filter(|character| !VALID_CHARS.contains(character))
             .take(1)
             .collect();
 
         let raw = raw
             .find(invalid.as_str())
-            .map(|index| NonZeroUsize::new(index))
+            .map(NonZeroUsize::new)
             .and_then(|index| index)
-            .and_then(|index| Some(raw[..index.get()].to_owned()))
+            .map(|index| raw[..index.get()].to_owned())
             .unwrap_or(raw);
 
-        raw.strip_suffix(".")
-            .and_then(|truncated| Some(truncated.to_owned()))
+        raw.strip_suffix(DOT)
+            .map(|truncated| truncated.to_owned())
             .unwrap_or(raw)
     }
 
     /// Validates domain as in rfc1035 defined.
-    pub fn validate(domain: &String) -> bool {
-        let mut lables = domain.split(".");
+    pub fn validate(domain: &str) -> bool {
+        let mut lables = domain.split(DOT);
         let is_first_alphabetic = lables.clone().all(|label| {
             label
                 .chars()
-                .nth(0)
+                .next()
                 .map(|c| c.is_ascii_alphabetic())
                 .unwrap_or_else(|| false)
         });
@@ -185,11 +190,11 @@ mod domain_validation {
         });
         let is_interior_characters_valid = lables
             .clone()
-            .all(|label| label.chars().all(|c| c.is_alphanumeric() || c == '-'));
+            .all(|label| label.chars().all(|c| c.is_alphanumeric() || HYPHEN.eq(&c)));
         let upper_limit = lables.clone().all(|label| label.len() <= 63);
-        let lower_limit = lables.all(|label| label.len() >= 1);
-        let total_upper_limit = domain.chars().filter(|c| c.to_string() != ".").count() <= 255;
-        let contains_dot = domain.contains(".");
+        let lower_limit = lables.all(|label| !label.is_empty());
+        let total_upper_limit = domain.chars().filter(|c| !DOT.eq(c)).count() <= 255;
+        let contains_dot = domain.contains(DOT);
 
         contains_dot
             && is_first_alphabetic

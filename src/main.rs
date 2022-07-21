@@ -1,10 +1,10 @@
 use lib::addlist::{addlist, Addlist, AddlistConfig};
-use std::sync::Arc;
 use lib::config::Config;
 use lib::errors::MyErrors;
 use lib::thread::ThreadPool;
 use std::fs;
 use std::io::Write;
+use std::sync::Arc;
 
 mod lib;
 

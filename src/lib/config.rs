@@ -1,4 +1,4 @@
-use core::num::{NonZeroUsize,NonZeroU64};
+use core::num::{NonZeroU64, NonZeroUsize};
 use num_cpus;
 use serde::{Deserialize, Serialize};
 
@@ -38,7 +38,7 @@ impl ::std::default::Default for Config {
             version: 1,
             threads: NonZeroUsize::new(num_cpus::get() / 2)
                 .unwrap_or_else(|| NonZeroUsize::new(1).unwrap()),
-            addlist: addlist,
+            addlist,
             whitelist: Some(vec![
                 "https://whitelist1.example.local".to_owned(),
                 "https://whitelist2.example.local".to_owned(),

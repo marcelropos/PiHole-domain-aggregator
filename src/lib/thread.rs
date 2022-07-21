@@ -1,9 +1,9 @@
+use core::num::NonZeroUsize;
 use num_cpus;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use worker::{Message, Worker};
-use core::num::NonZeroUsize;
 
 use super::errors::MyErrors;
 
@@ -22,10 +22,10 @@ impl ThreadPool {
     pub fn new(size: NonZeroUsize) -> Result<ThreadPool, MyErrors> {
         let max = num_cpus::get() / 2;
         if max < size.get() {
-            return Err(MyErrors::InvalidConfig(String::from(format!(
+            return Err(MyErrors::InvalidConfig(format!(
                 "The `threads` size must be lower than {}",
                 max
-            ))));
+            )));
         }
 
         let (sender, receiver) = mpsc::channel();
@@ -54,7 +54,7 @@ impl ThreadPool {
 }
 
 /// Drops ThreadPool
-/// 
+///
 /// The TheadPool will only be dropped when all workers are finished.
 impl Drop for ThreadPool {
     fn drop(&mut self) {
