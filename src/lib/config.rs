@@ -1,12 +1,13 @@
 use core::num::{NonZeroU64, NonZeroUsize};
 use num_cpus;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub version: u8,
     pub threads: NonZeroUsize,
-    pub addlist: Vec<(String, Vec<String>)>,
+    pub addlist: HashMap<String, Vec<String>>,
     pub whitelist: Option<Vec<String>>,
     pub path: String,
     pub prefix: Option<String>,
@@ -17,22 +18,21 @@ pub struct Config {
 /// `MyConfig` implements `Default`
 impl ::std::default::Default for Config {
     fn default() -> Self {
-        let addlist = vec![
-            (
-                "AddlistOne".to_owned(),
-                vec![
-                    "https://1.example.local".to_owned(),
-                    "https://2.example.local".to_owned(),
-                ],
-            ),
-            (
-                "AddlistTwo".to_owned(),
-                vec![
-                    "https://3.example.local".to_owned(),
-                    "https://4.example.local".to_owned(),
-                ],
-            ),
-        ];
+        let mut addlist = HashMap::new();
+        addlist.insert(
+            "AddlistOne".to_owned(),
+            vec![
+                "https://1.example.local".to_owned(),
+                "https://2.example.local".to_owned(),
+            ],
+        );
+        addlist.insert(
+            "AddlistTwo".to_owned(),
+            vec![
+                "https://3.example.local".to_owned(),
+                "https://4.example.local".to_owned(),
+            ],
+        );
 
         Self {
             version: 1,

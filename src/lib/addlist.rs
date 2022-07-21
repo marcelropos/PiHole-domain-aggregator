@@ -39,23 +39,22 @@ impl AddlistConfig {
     }
 }
 /// Creates Addlist
-pub fn addlist(config: &AddlistConfig) -> Addlist {
+pub fn addlist(config: &AddlistConfig) -> Option<Addlist> {
     let client = Client::new();
 
     let data = config
         .config
         .addlist
+        .get(&config.name)?
         .iter()
-        .filter(|list| list.0 == config.name)
-        .flat_map(|list| &list.1)
         .flat_map(|url| fetch(url, &client, config.config.delay))
         .flat_map(parse)
         .collect();
 
-    Addlist {
+    Some(Addlist {
         list: mutate(config, data),
         name: config.name.to_owned(),
-    }
+    })
 }
 
 /// Fetches raw domain data
