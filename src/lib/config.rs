@@ -43,7 +43,7 @@ impl ::std::default::Default for Config {
                 "https://whitelist1.example.local".to_owned(),
                 "https://whitelist2.example.local".to_owned(),
             ]),
-            path: "./".to_string(),
+            path: "./".to_owned(),
             prefix: Some("127.0.0.1 ".to_owned()),
             suffix: Some("# Some text here.".to_owned()),
             delay: Some(NonZeroU64::new(1000).unwrap()),

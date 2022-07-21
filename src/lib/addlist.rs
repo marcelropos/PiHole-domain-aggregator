@@ -20,7 +20,7 @@ pub struct AddlistConfig {
 impl AddlistConfig {
     pub fn new(name: &String, config: Arc<Config>) -> AddlistConfig {
         AddlistConfig {
-            name: name.to_string(),
+            name: name.to_owned(),
             config,
         }
     }
@@ -101,7 +101,7 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
                 domain
                     .strip_prefix("www.")
                     .unwrap_or(domain.as_str())
-                    .to_string()
+                    .to_owned()
             } else {
                 domain
             }
@@ -224,7 +224,7 @@ mod domain_validation {
         fn test_not_truncated() -> Result<(), String> {
             assert_eq!(
                 "www.rust-lang.org",
-                super::truncate("www.rust-lang.org".to_string()),
+                super::truncate("www.rust-lang.org".to_owned()),
                 "The should not be any changes!"
             );
             Ok(())
@@ -234,7 +234,7 @@ mod domain_validation {
         fn test_truncate_port() -> Result<(), String> {
             assert_eq!(
                 "www.rust-lang.org",
-                super::truncate("www.rust-lang.org:443".to_string()),
+                super::truncate("www.rust-lang.org:443".to_owned()),
                 "The port was not cut off!"
             );
             Ok(())
@@ -244,7 +244,7 @@ mod domain_validation {
         fn test_truncate_uri() -> Result<(), String> {
             assert_eq!(
                 "www.rust-lang.org",
-                super::truncate("www.rust-lang.org/community".to_string()),
+                super::truncate("www.rust-lang.org/community".to_owned()),
                 "The request uri was not cut off!"
             );
             Ok(())
