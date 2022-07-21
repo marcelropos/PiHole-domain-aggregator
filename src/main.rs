@@ -40,7 +40,7 @@ fn parse_config() -> Result<Config, MyErrors> {
         Err(err) => match err.kind() {
             ErrorKind::NotFound => {
                 let config = Config::default();
-                let serialized = serde_json::to_string_pretty(&config).unwrap();
+                let serialized = serde_yaml::to_string(&config).unwrap();
                 fs::write(CONFIG_PATH, serialized)?;
                 Err(MyErrors::ConfigErr(
                     "No config found! Created default config.".to_owned(),
@@ -62,9 +62,10 @@ fn run(config: Config) -> Result<(), MyErrors> {
         let addlist_config = AddlistConfig::new(addlist_name, config.clone());
 
         pool.execute(move || {
-            let data = addlist(&addlist_config);
-            if let Some(err) = write_to_file(addlist_config, data).err() {
-                eprint!("{:?}", err);
+            if let Some(data) = addlist(&addlist_config) {
+                if let Some(err) = write_to_file(addlist_config, data).err() {
+                    eprint!("{:?}", err);
+                }
             }
         })
     }
