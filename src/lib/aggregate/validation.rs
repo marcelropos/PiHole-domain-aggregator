@@ -5,49 +5,11 @@ const HYPHEN: char = '-';
 const PUNY: &str = "xn--";
 const VALID_CHARS: [char; 2] = [HYPHEN, DOT];
 
-/// Recives possible IDNs and converts it to punicode if needed.
-pub fn encode(decoded: &str) -> String {
-    decoded
-        .split(DOT)
-        .into_iter()
-        .map(help_encode)
-        .collect::<Vec<String>>()
-        .join(".")
-}
-
-fn help_encode(decoded: &str) -> String {
-    if decoded.is_ascii() {
-        return decoded.to_owned();
-    }
-    punycode::encode(decoded)
-        .map(|encoded| PUNY.to_owned() + encoded.as_str())
-        .unwrap_or_else(|_| decoded.to_owned())
-}
-
-/// Truncates invalid characters and returns the valid part.
-pub fn truncate(raw: String) -> String {
-    let invalid: String = raw
-        .chars()
-        .filter(|character| !character.is_ascii_alphanumeric())
-        .filter(|character| !VALID_CHARS.contains(character))
-        .take(1)
-        .collect();
-
-    let raw = raw
-        .find(invalid.as_str())
-        .map(NonZeroUsize::new)
-        .and_then(|index| index)
-        .map(|index| raw[..index.get()].to_owned())
-        .unwrap_or(raw);
-
-    raw.strip_suffix(DOT)
-        .map(|truncated| truncated.to_owned())
-        .unwrap_or(raw)
-}
-
 /// Validates domain as in rfc1035 defined.
-pub fn validate(domain: &str) -> bool {
+pub fn validate(domain: &str) -> Option<String> {
+    let domain = truncate(encode(domain));
     let mut lables = domain.split(DOT);
+    
     let is_first_alphabetic = lables.clone().all(|label| {
         label
             .chars()
@@ -70,13 +32,58 @@ pub fn validate(domain: &str) -> bool {
     let total_upper_limit = domain.chars().filter(|c| !DOT.eq(c)).count() <= 255;
     let contains_dot = domain.contains(DOT);
 
-    contains_dot
+    if contains_dot
         && is_first_alphabetic
         && is_last_alphanumeric
         && is_interior_characters_valid
         && upper_limit
         && lower_limit
         && total_upper_limit
+    {
+        Some(domain)
+    } else {
+        None
+    }
+}
+
+/// Recives possible IDNs and converts it to punicode if needed.
+fn encode(decoded: &str) -> String {
+    decoded
+        .split(DOT)
+        .into_iter()
+        .map(help_encode)
+        .collect::<Vec<String>>()
+        .join(".")
+}
+
+fn help_encode(decoded: &str) -> String {
+    if decoded.is_ascii() {
+        return decoded.to_owned();
+    }
+    punycode::encode(decoded)
+        .map(|encoded| PUNY.to_owned() + encoded.as_str())
+        .unwrap_or_else(|_| decoded.to_owned())
+}
+
+/// Truncates invalid characters and returns the valid part.
+fn truncate(raw: String) -> String {
+    let invalid: String = raw
+        .chars()
+        .filter(|character| !character.is_ascii_alphanumeric())
+        .filter(|character| !VALID_CHARS.contains(character))
+        .take(1)
+        .collect();
+
+    let raw = raw
+        .find(invalid.as_str())
+        .map(NonZeroUsize::new)
+        .and_then(|index| index)
+        .map(|index| raw[..index.get()].to_owned())
+        .unwrap_or(raw);
+
+    raw.strip_suffix(DOT)
+        .map(|truncated| truncated.to_owned())
+        .unwrap_or(raw)
 }
 
 mod tests {
@@ -126,8 +133,9 @@ mod tests {
 
     #[test]
     fn test_validate_valid() -> Result<(), String> {
-        assert!(
-            super::validate(&String::from("rfc-1035.ietf.org")),
+        assert_eq!(
+            super::validate("rfc-1035.ietf.org"),
+            Some("rfc-1035.ietf.org".to_owned()),
             "Rejected vaid domain!"
         );
 
@@ -135,17 +143,19 @@ mod tests {
     }
     #[test]
     fn test_validate_letter_or_digit() -> Result<(), String> {
-        assert!(
-            !super::validate(&String::from("rfc1035-.ietf.org")),
-            "At least one labe does not end with a letter or a digit!"
+        assert_eq!(
+            super::validate("rfc1035-.ietf.org"),
+            None,
+            "At least one label does not end with a letter or a digit!"
         );
         Ok(())
     }
 
     #[test]
     fn test_validate_letter() -> Result<(), String> {
-        assert!(
-            !super::validate(&String::from("1035.ietf.org")),
+        assert_eq!(
+            super::validate("1035.ietf.org"),
+            None,
             "Domain must start with a letter!"
         );
         Ok(())
@@ -153,34 +163,38 @@ mod tests {
 
     #[test]
     fn test_validate_letter1() -> Result<(), String> {
-        assert!(
-            !super::validate(&String::from("-1035.ietf.org")),
+        assert_eq!(
+            super::validate("-1035.ietf.org"),
+            None,
             "Domain must start with a letter!"
         );
         Ok(())
     }
     #[test]
     fn test_validate_valid_chars() -> Result<(), String> {
-        assert!(
-            !super::validate(&String::from("rfc1035.i?tf.org")),
+        assert_eq!(
+            super::validate("rfc1035.?itf.org"),
+            None,
             "Domain must only contain letters digits or hivens!"
         );
         Ok(())
     }
     #[test]
     fn test_validate_short() -> Result<(), String> {
-        assert!(
-            !super::validate(&String::from(".org")),
+        assert_eq!(
+            super::validate(".org"),
+            None,
             "Domains must be longer than 1 character!"
         );
         Ok(())
     }
     #[test]
     fn test_validate_long() -> Result<(), String> {
-        assert!(
-            !super::validate(&String::from(
+        assert_eq!(
+            super::validate(
                 "rfc---------------------------------------------------------1035.ietf.org"
-            )),
+            ),
+            None,
             "Domains must be shorter than 64 character!"
         );
         Ok(())

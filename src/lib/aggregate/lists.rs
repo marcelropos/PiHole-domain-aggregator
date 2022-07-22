@@ -71,9 +71,7 @@ fn parse(raw_data: String) -> HashSet<String> {
             None => line,
         })
         .flat_map(|line| line.split(' '))
-        .map(validation::encode)
-        .map(validation::truncate)
-        .filter(|data| validation::validate(data.as_str()))
+        .flat_map(validation::validate)
         .collect()
 }
 
