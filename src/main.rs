@@ -1,6 +1,7 @@
 mod lib;
 
-use lib::addlist::{addlist, whitelist, Addlist, AddlistConfig};
+use lib::aggregate::data::{Addlist, AddlistConfig};
+use lib::aggregate::lists::{addlist, whitelist};
 use lib::config::Config;
 use lib::errors::MyErrors;
 use lib::thread::ThreadPool;

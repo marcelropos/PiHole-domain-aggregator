@@ -1,51 +1,14 @@
-use super::config::Config;
+use super::super::config::Config;
+use super::data::{Addlist, AddlistConfig};
+use super::validation;
 use core::num::NonZeroU64;
 use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::{thread, time};
 
-const DOT: char = '.';
+pub const DOT: char = '.';
 
-#[derive(Eq, PartialEq, Debug)]
-pub struct Addlist {
-    pub name: String,
-    pub list: Vec<String>,
-}
-
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct AddlistSources {
-    pub addlist: HashSet<String>,
-    pub whitelist: Option<HashSet<String>>,
-}
-
-pub struct AddlistConfig {
-    pub name: String,
-    pub config: Arc<Config>,
-}
-
-impl AddlistConfig {
-    pub fn new(name: &String, config: Arc<Config>) -> AddlistConfig {
-        AddlistConfig {
-            name: name.to_owned(),
-            config,
-        }
-    }
-    pub fn prefix(&self) -> &str {
-        match &self.config.prefix {
-            Some(prefix) => prefix,
-            None => "",
-        }
-    }
-
-    pub fn suffix(&self) -> &str {
-        match &self.config.suffix {
-            Some(suffix) => suffix,
-            None => "",
-        }
-    }
-}
 /// Creates Addlist
 pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -> Option<Addlist> {
     let client = Client::new();
@@ -54,7 +17,8 @@ pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -
         Some(local_whitelist) => local_whitelist,
         None => HashSet::new(),
     };
-    let local_reduced_whitelist: HashSet<_> = local_whitelist.difference(&global_whitelist).collect();
+    let local_reduced_whitelist: HashSet<_> =
+        local_whitelist.difference(&global_whitelist).collect();
 
     let data = sources
         .addlist
@@ -107,9 +71,9 @@ fn parse(raw_data: String) -> HashSet<String> {
             None => line,
         })
         .flat_map(|line| line.split(' '))
-        .map(domain_validation::encode)
-        .map(domain_validation::truncate)
-        .filter(|data| domain_validation::validate(data.as_str()))
+        .map(validation::encode)
+        .map(validation::truncate)
+        .filter(|data| validation::validate(data.as_str()))
         .collect()
 }
 
@@ -148,203 +112,10 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
         .collect()
 }
 
-mod domain_validation {
-    use super::DOT;
-    use std::num::NonZeroUsize;
-
-    const HYPHEN: char = '-';
-    const PUNY: &str = "xn--";
-    const VALID_CHARS: [char; 2] = [HYPHEN, DOT];
-
-    /// Recives possible IDNs and converts it to punicode if needed.
-    pub fn encode(decoded: &str) -> String {
-        decoded
-            .split(DOT)
-            .into_iter()
-            .map(help_encode)
-            .collect::<Vec<String>>()
-            .join(".")
-    }
-
-    fn help_encode(decoded: &str) -> String {
-        if decoded.is_ascii() {
-            return decoded.to_owned();
-        }
-        punycode::encode(decoded)
-            .map(|encoded| PUNY.to_owned() + encoded.as_str())
-            .unwrap_or_else(|_| decoded.to_owned())
-    }
-
-    /// Truncates invalid characters and returns the valid part.
-    pub fn truncate(raw: String) -> String {
-        let invalid: String = raw
-            .chars()
-            .filter(|character| !character.is_ascii_alphanumeric())
-            .filter(|character| !VALID_CHARS.contains(character))
-            .take(1)
-            .collect();
-
-        let raw = raw
-            .find(invalid.as_str())
-            .map(NonZeroUsize::new)
-            .and_then(|index| index)
-            .map(|index| raw[..index.get()].to_owned())
-            .unwrap_or(raw);
-
-        raw.strip_suffix(DOT)
-            .map(|truncated| truncated.to_owned())
-            .unwrap_or(raw)
-    }
-
-    /// Validates domain as in rfc1035 defined.
-    pub fn validate(domain: &str) -> bool {
-        let mut lables = domain.split(DOT);
-        let is_first_alphabetic = lables.clone().all(|label| {
-            label
-                .chars()
-                .next()
-                .map(|c| c.is_ascii_alphabetic())
-                .unwrap_or_else(|| false)
-        });
-        let is_last_alphanumeric = lables.clone().all(|label| {
-            label
-                .chars()
-                .last()
-                .map(|c| (c.is_ascii_alphanumeric()))
-                .unwrap_or_else(|| false)
-        });
-        let is_interior_characters_valid = lables
-            .clone()
-            .all(|label| label.chars().all(|c| c.is_alphanumeric() || HYPHEN.eq(&c)));
-        let upper_limit = lables.clone().all(|label| label.len() <= 63);
-        let lower_limit = lables.all(|label| !label.is_empty());
-        let total_upper_limit = domain.chars().filter(|c| !DOT.eq(c)).count() <= 255;
-        let contains_dot = domain.contains(DOT);
-
-        contains_dot
-            && is_first_alphabetic
-            && is_last_alphanumeric
-            && is_interior_characters_valid
-            && upper_limit
-            && lower_limit
-            && total_upper_limit
-    }
-
-    mod tests {
-        #[test]
-        fn test_decode_no_change() -> Result<(), String> {
-            assert_eq!("www.rust-lang.org", super::encode("www.rust-lang.org"));
-            Ok(())
-        }
-
-        #[test]
-        fn test_encode() -> Result<(), String> {
-            assert_eq!(
-                "www.xn--mller-brombel-rmb4fg.de",
-                super::encode("www.müller-büromöbel.de")
-            );
-            Ok(())
-        }
-        #[test]
-        fn test_not_truncated() -> Result<(), String> {
-            assert_eq!(
-                "www.rust-lang.org",
-                super::truncate("www.rust-lang.org".to_owned()),
-                "The should not be any changes!"
-            );
-            Ok(())
-        }
-
-        #[test]
-        fn test_truncate_port() -> Result<(), String> {
-            assert_eq!(
-                "www.rust-lang.org",
-                super::truncate("www.rust-lang.org:443".to_owned()),
-                "The port was not cut off!"
-            );
-            Ok(())
-        }
-
-        #[test]
-        fn test_truncate_uri() -> Result<(), String> {
-            assert_eq!(
-                "www.rust-lang.org",
-                super::truncate("www.rust-lang.org/community".to_owned()),
-                "The request uri was not cut off!"
-            );
-            Ok(())
-        }
-
-        #[test]
-        fn test_validate_valid() -> Result<(), String> {
-            assert!(
-                super::validate(&String::from("rfc-1035.ietf.org")),
-                "Rejected vaid domain!"
-            );
-
-            Ok(())
-        }
-        #[test]
-        fn test_validate_letter_or_digit() -> Result<(), String> {
-            assert!(
-                !super::validate(&String::from("rfc1035-.ietf.org")),
-                "At least one labe does not end with a letter or a digit!"
-            );
-            Ok(())
-        }
-
-        #[test]
-        fn test_validate_letter() -> Result<(), String> {
-            assert!(
-                !super::validate(&String::from("1035.ietf.org")),
-                "Domain must start with a letter!"
-            );
-            Ok(())
-        }
-
-        #[test]
-        fn test_validate_letter1() -> Result<(), String> {
-            assert!(
-                !super::validate(&String::from("-1035.ietf.org")),
-                "Domain must start with a letter!"
-            );
-            Ok(())
-        }
-        #[test]
-        fn test_validate_valid_chars() -> Result<(), String> {
-            assert!(
-                !super::validate(&String::from("rfc1035.i?tf.org")),
-                "Domain must only contain letters digits or hivens!"
-            );
-            Ok(())
-        }
-        #[test]
-        fn test_validate_short() -> Result<(), String> {
-            assert!(
-                !super::validate(&String::from(".org")),
-                "Domains must be longer than 1 character!"
-            );
-            Ok(())
-        }
-        #[test]
-        fn test_validate_long() -> Result<(), String> {
-            assert!(
-                !super::validate(&String::from(
-                    "rfc---------------------------------------------------------1035.ietf.org"
-                )),
-                "Domains must be shorter than 64 character!"
-            );
-            Ok(())
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::lib::addlist::AddlistSources;
-
+    use super::super::data::{Addlist, AddlistConfig, AddlistSources};
     use super::Config;
-    use super::{Addlist, AddlistConfig};
     use mockito::mock;
     use std::collections::{HashMap, HashSet};
     use std::sync::Arc;

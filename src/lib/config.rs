@@ -3,7 +3,7 @@ use num_cpus;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
-use super::addlist::AddlistSources;
+use super::aggregate::data::AddlistSources;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
