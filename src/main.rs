@@ -1,6 +1,7 @@
 mod lib;
 
-use lib::addlist::{addlist, Addlist, AddlistConfig};
+use lib::aggregate::data::{Addlist, AddlistConfig};
+use lib::aggregate::lists::{addlist, whitelist};
 use lib::config::Config;
 use lib::errors::MyErrors;
 use lib::thread::ThreadPool;
@@ -57,12 +58,15 @@ fn parse_config() -> Result<Config, MyErrors> {
 /// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
 fn run(config: Config) -> Result<(), MyErrors> {
     let pool = ThreadPool::new(config.threads)?;
+
     let config = Arc::new(config);
+    let whitelist = Arc::new(whitelist(config.whitelist.clone(), &config).unwrap_or_default());
     for (addlist_name, _) in config.addlist.iter() {
         let addlist_config = AddlistConfig::new(addlist_name, config.clone());
+        let whitelist = whitelist.clone();
 
         pool.execute(move || {
-            if let Some(data) = addlist(&addlist_config) {
+            if let Some(data) = addlist(&addlist_config, whitelist) {
                 if let Some(err) = write_to_file(addlist_config, data).err() {
                     eprint!("{:?}", err);
                 }
