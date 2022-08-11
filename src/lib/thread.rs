@@ -1,8 +1,6 @@
 use core::num::NonZeroUsize;
 use num_cpus;
-use std::sync::mpsc;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{mpsc, Arc, Mutex};
 use worker::{Message, Worker};
 
 use super::errors::MyErrors;

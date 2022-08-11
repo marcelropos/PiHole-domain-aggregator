@@ -1,6 +1,6 @@
-use super::super::config::Config;
-use super::data::{Addlist, AddlistConfig};
-use super::validation;
+use crate::lib::aggregate::data::{Addlist, AddlistConfig};
+use crate::lib::aggregate::validation;
+use crate::Config;
 use core::num::NonZeroU64;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
@@ -70,7 +70,7 @@ fn parse(raw_data: String) -> HashSet<String> {
         .lines()
         .map(|line| {
             line.find(COMMENT)
-                .and_then(|index| Some(line[..index].as_ref()))
+                .map(|index| line[..index].as_ref())
                 .unwrap_or(line)
         })
         .flat_map(|line| line.split_whitespace())
@@ -119,8 +119,8 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::data::{Addlist, AddlistConfig, AddlistSources};
-    use super::Config;
+    use crate::lib::aggregate::data::{Addlist, AddlistConfig, AddlistSources};
+    use crate::Config;
     use mockito::mock;
     use std::collections::{HashMap, HashSet};
     use std::sync::Arc;

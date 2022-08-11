@@ -1,7 +1,6 @@
+use crate::lib::config::Config;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
-
-use crate::lib::config::Config;
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Addlist {
