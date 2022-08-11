@@ -8,6 +8,8 @@ use std::sync::Arc;
 use std::{thread, time};
 
 pub const DOT: char = '.';
+const WWW: &str = "www.";
+const COMMENT: char = '#';
 
 /// Creates Addlist
 pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -> Option<Addlist> {
@@ -66,11 +68,12 @@ fn parse(raw_data: String) -> HashSet<String> {
     raw_data
         .to_lowercase()
         .lines()
-        .map(|line| match line.find('#') {
-            Some(index) => line[..index].as_ref(),
-            None => line,
+        .map(|line| {
+            line.find(COMMENT)
+                .and_then(|index| Some(line[..index].as_ref()))
+                .unwrap_or(line)
         })
-        .flat_map(|line| line.split(' '))
+        .flat_map(|line| line.split_whitespace())
         .flat_map(validation::validate)
         .collect()
 }
@@ -84,9 +87,9 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
     let mut no_prefix: Vec<String> = domains
         .into_iter()
         .map(|domain| {
-            if domain.split(DOT).count() == 3 && domain.starts_with("www.") {
+            if domain.split(DOT).count() == 3 && domain.starts_with(WWW) {
                 domain
-                    .strip_prefix("www.")
+                    .strip_prefix(WWW)
                     .unwrap_or(domain.as_str())
                     .to_owned()
             } else {
@@ -98,8 +101,8 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 
     let mut prefix: Vec<String> = no_prefix
         .iter()
-        .filter(|domain| domain.split(DOT).count() == 2 && !domain.starts_with("www."))
-        .map(|domain| format!("www.{}", domain))
+        .filter(|domain| domain.split(DOT).count() == 2 && !domain.starts_with(WWW))
+        .map(|domain| format!("{}{}", WWW, domain))
         .collect();
     prefix.sort();
 
