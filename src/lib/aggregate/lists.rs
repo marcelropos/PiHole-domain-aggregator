@@ -84,7 +84,7 @@ fn parse(raw_data: String) -> HashSet<String> {
 /// Converts the Set of domains to a sorted vector.
 /// Add/Remove the subdomain `www.` to have both in the addlist.
 fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
-    let mut no_prefix: Vec<String> = domains
+    let mut no_prefix = domains
         .into_iter()
         .map(|domain| {
             if domain.split(DOT).count() == 3 && domain.starts_with(WWW) {
@@ -96,14 +96,18 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
                 domain
             }
         })
-        .collect();
+        .collect::<HashSet<String>>()
+        .into_iter()
+        .collect::<Vec<String>>();
     no_prefix.sort();
 
-    let mut prefix: Vec<String> = no_prefix
+    let mut prefix = no_prefix
         .iter()
         .filter(|domain| domain.split(DOT).count() == 2 && !domain.starts_with(WWW))
         .map(|domain| format!("{}{}", WWW, domain))
-        .collect();
+        .collect::<HashSet<String>>()
+        .into_iter()
+        .collect::<Vec<String>>();
     prefix.sort();
 
     no_prefix.extend(prefix);
@@ -281,11 +285,68 @@ mod tests {
     }
 
     #[test]
-    fn test_mutate() -> Result<(), String> {
+    fn test_mutate_add() -> Result<(), String> {
         let premut = HashSet::from_iter([
             String::from("a.com"),
             String::from("b.com"),
             String::from("c.com"),
+        ]);
+        let mut config = Config::default();
+        config.prefix = None;
+        config.suffix = None;
+        let addlist_config = super::AddlistConfig {
+            name: String::from("New"),
+            config: Arc::new(config),
+        };
+        let want = vec![
+            String::from("a.com"),
+            String::from("b.com"),
+            String::from("c.com"),
+            String::from("www.a.com"),
+            String::from("www.b.com"),
+            String::from("www.c.com"),
+        ];
+        let have = super::mutate(&addlist_config, premut);
+        assert_eq!(want, have);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mutate_remove() -> Result<(), String> {
+        let premut = HashSet::from_iter([
+            String::from("www.a.com"),
+            String::from("www.b.com"),
+            String::from("www.c.com"),
+        ]);
+        let mut config = Config::default();
+        config.prefix = None;
+        config.suffix = None;
+        let addlist_config = super::AddlistConfig {
+            name: String::from("New"),
+            config: Arc::new(config),
+        };
+        let want = vec![
+            String::from("a.com"),
+            String::from("b.com"),
+            String::from("c.com"),
+            String::from("www.a.com"),
+            String::from("www.b.com"),
+            String::from("www.c.com"),
+        ];
+        let have = super::mutate(&addlist_config, premut);
+        assert_eq!(want, have);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mutate_duplicate() -> Result<(), String> {
+        let premut = HashSet::from_iter([
+            String::from("a.com"),
+            String::from("b.com"),
+            String::from("c.com"),
+            String::from("www.a.com"),
+            String::from("www.b.com"),
+            String::from("www.c.com"),
         ]);
         let mut config = Config::default();
         config.prefix = None;
