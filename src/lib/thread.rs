@@ -20,7 +20,7 @@ impl ThreadPool {
         let max = num_cpus::get() / 2;
         if max < size.get() {
             return Err(anyhow!(
-                "CPU count must be lower than {} for your system",
+                "The `threads` size must be lower than {}",
                 max
             ));
         }
