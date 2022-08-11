@@ -1,14 +1,12 @@
 mod lib;
-
-use lib::aggregate::data::{Addlist, AddlistConfig};
-use lib::aggregate::lists::{addlist, whitelist};
-use lib::config::Config;
-use lib::errors::MyErrors;
-use lib::thread::ThreadPool;
+use crate::lib::aggregate::data::{Addlist, AddlistConfig};
+use crate::lib::aggregate::lists::{addlist, whitelist};
+use crate::lib::config::Config;
+use crate::lib::errors::MyErrors;
+use crate::lib::thread::ThreadPool;
 use serde_json::error::Category;
 use std::fs;
-use std::io::ErrorKind;
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::sync::Arc;
 
 const CONFIG_PATH: &str = "./data/config";

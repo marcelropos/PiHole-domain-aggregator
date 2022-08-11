@@ -1,9 +1,8 @@
+use crate::lib::aggregate::data::AddlistSources;
 use core::num::{NonZeroU64, NonZeroUsize};
 use num_cpus;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-
-use super::aggregate::data::AddlistSources;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {

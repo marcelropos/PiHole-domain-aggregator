@@ -1,4 +1,4 @@
-use super::lists::DOT;
+use crate::lib::aggregate::lists::DOT;
 use std::num::NonZeroUsize;
 
 const HYPHEN: char = '-';
@@ -9,7 +9,7 @@ const VALID_CHARS: [char; 2] = [HYPHEN, DOT];
 pub fn validate(domain: &str) -> Option<String> {
     let domain = truncate(encode(domain));
     let mut lables = domain.split(DOT);
-    
+
     let is_first_alphabetic = lables.clone().all(|label| {
         label
             .chars()
