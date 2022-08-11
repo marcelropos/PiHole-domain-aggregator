@@ -2,8 +2,8 @@ mod lib;
 use crate::lib::aggregate::data::{Addlist, AddlistConfig};
 use crate::lib::aggregate::lists::{addlist, whitelist};
 use crate::lib::config::Config;
-use crate::lib::errors::MyErrors;
 use crate::lib::thread::ThreadPool;
+use anyhow::{anyhow, Error};
 use serde_json::error::Category;
 use std::fs;
 use std::io::{ErrorKind, Write};
@@ -17,13 +17,13 @@ const CONFIG_PATH: &str = "./data/config";
 /// This function will throw an error if:
 /// - [MyErrors::ConfigErr] If no configuration was found, is not valid or could not parsed.
 /// - [MyErrors::IoErr] with [std::io::ErrorKind] information if config could not be accessed.
-fn main() -> Result<(), MyErrors> {
+fn main() -> Result<(), Error> {
     let config = parse_config()?;
     run(config)
 }
 
 /// Reads and parses the configuration.
-fn parse_config() -> Result<Config, MyErrors> {
+fn parse_config() -> Result<Config, Error> {
     match fs::read_to_string(CONFIG_PATH) {
         Ok(raw) => match serde_json::from_str(&raw) {
             Ok(config) => Ok(config),
@@ -41,9 +41,7 @@ fn parse_config() -> Result<Config, MyErrors> {
                 let config = Config::default();
                 let serialized = serde_yaml::to_string(&config).unwrap();
                 fs::write(CONFIG_PATH, serialized)?;
-                Err(MyErrors::ConfigErr(
-                    "No config found! Created default config.".to_owned(),
-                ))
+                Err(anyhow!("No config found! Created default config."))
             }
             _ => Err(err.into()),
         },
@@ -54,7 +52,7 @@ fn parse_config() -> Result<Config, MyErrors> {
 ///
 /// # Errors
 /// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
-fn run(config: Config) -> Result<(), MyErrors> {
+fn run(config: Config) -> Result<(), Error> {
     let pool = ThreadPool::new(config.threads)?;
 
     let config = Arc::new(config);

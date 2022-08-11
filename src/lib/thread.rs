@@ -1,9 +1,8 @@
+use anyhow::{anyhow, Error};
 use core::num::NonZeroUsize;
 use num_cpus;
 use std::sync::{mpsc, Arc, Mutex};
 use worker::{Message, Worker};
-
-use super::errors::MyErrors;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -17,13 +16,13 @@ impl ThreadPool {
     ///
     /// # Errors
     /// The ThreadPool creation failes when the number of threads grather than a half of all logical cores.
-    pub fn new(size: NonZeroUsize) -> Result<ThreadPool, MyErrors> {
+    pub fn new(size: NonZeroUsize) -> Result<ThreadPool, Error> {
         let max = num_cpus::get() / 2;
         if max < size.get() {
-            return Err(MyErrors::ConfigErr(format!(
-                "The `threads` size must be lower than {}",
+            return Err(anyhow!(
+                "CPU count must be lower than {} for your system",
                 max
-            )));
+            ));
         }
 
         let (sender, receiver) = mpsc::channel();

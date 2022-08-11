@@ -12,6 +12,7 @@ serde = {version = "^1.0", features = ["derive"]}
 serde_yaml = "0.8.23"
 serde_json = "1.0.82"
 num_cpus = "1.13.1"
+anyhow = "1.0.61"
 
 [dev-dependencies]
 mockito = "0.31.0"
