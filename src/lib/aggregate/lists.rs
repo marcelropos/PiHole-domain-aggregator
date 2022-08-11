@@ -112,7 +112,7 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 
     no_prefix.extend(prefix);
     no_prefix
-        .iter()
+        .into_iter()
         .map(|domain| format!("{}{}{}", config.prefix(), domain, config.suffix()))
         .collect()
 }
