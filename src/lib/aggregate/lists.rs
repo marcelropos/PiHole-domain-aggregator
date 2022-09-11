@@ -2,6 +2,7 @@ use crate::lib::aggregate::data::{Addlist, AddlistConfig};
 use crate::lib::aggregate::validation;
 use crate::Config;
 use core::num::NonZeroU64;
+use itertools::Itertools;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -84,7 +85,7 @@ fn parse(raw_data: String) -> HashSet<String> {
 /// Converts the Set of domains to a sorted vector.
 /// Add/Remove the subdomain `www.` to have both in the addlist.
 fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
-    let mut no_prefix = domains
+    let no_prefix = domains
         .into_iter()
         .map(|domain| {
             if domain.split(DOT).count() == 3 && domain.starts_with(WWW) {
@@ -96,25 +97,26 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
                 domain
             }
         })
-        .collect::<HashSet<String>>()
-        .into_iter()
-        .collect::<Vec<String>>();
-    no_prefix.sort();
+        .unique()
+        .sorted()
+        .collect_vec(); // no copy or allocation cost.
 
-    let mut prefix = no_prefix
+    let prefix = no_prefix
         .iter()
         .filter(|domain| domain.split(DOT).count() == 2 && !domain.starts_with(WWW))
         .map(|domain| format!("{}{}", WWW, domain))
-        .collect::<HashSet<String>>()
-        .into_iter()
-        .collect::<Vec<String>>();
-    prefix.sort();
+        .unique()
+        .sorted()
+        .collect_vec(); // no copy or allocation cost.
 
-    no_prefix.extend(prefix);
-    no_prefix
-        .into_iter()
-        .map(|domain| format!("{}{}{}", config.prefix(), domain, config.suffix()))
-        .collect()
+    let combined = [no_prefix, prefix].into_iter().flatten();
+
+    match (&config.config.prefix, &config.config.suffix) {
+        (None, None) => combined.collect(),
+        _ => combined
+            .map(|domain| format!("{}{}{}", config.prefix(), domain, config.suffix()))
+            .collect(),
+    }
 }
 
 #[cfg(test)]
