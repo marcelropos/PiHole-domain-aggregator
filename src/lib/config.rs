@@ -10,6 +10,7 @@ pub struct Config {
     pub threads: NonZeroUsize,
     pub addlist: HashMap<String, AddlistSources>,
     pub whitelist: Option<HashSet<String>>,
+    pub size: Option<NonZeroUsize>,
     pub path: String,
     pub prefix: Option<String>,
     pub suffix: Option<String>,
@@ -56,6 +57,7 @@ impl ::std::default::Default for Config {
             prefix: Some("127.0.0.1 ".to_owned()),
             suffix: Some("# Some text here.".to_owned()),
             delay: Some(NonZeroU64::new(1000).unwrap()),
+            size: Some(NonZeroUsize::new(1_000_000).unwrap()),
         }
     }
 }
