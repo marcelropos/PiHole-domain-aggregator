@@ -20,7 +20,7 @@ pub struct AddlistConfig {
 }
 
 impl AddlistConfig {
-    pub fn new(name: &String, config: Arc<Config>) -> AddlistConfig {
+    pub fn new(name: &str, config: Arc<Config>) -> AddlistConfig {
         AddlistConfig {
             name: name.to_owned(),
             config,

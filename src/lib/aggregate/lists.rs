@@ -34,7 +34,7 @@ pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -
 
     Some(Addlist {
         list: mutate(config, data),
-        name: config.name.to_owned(),
+        name: config.name.clone(),
     })
 }
 
