@@ -100,17 +100,26 @@ mod worker {
     impl Worker {
         pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
             let thread = thread::spawn(move || loop {
-                let message = receiver.lock().unwrap().recv().unwrap();
+                let message = receiver.lock().map(|guard| guard.recv());
 
                 match message {
-                    Message::NewJob(job) => {
+                    //Expected cases
+                    Ok(Ok(Message::NewJob(job))) => {
                         println!("Worker {} got a job; executing.", id);
                         job();
                         println!("Worker {} finished a job; waiting for job.", id);
                     }
-                    Message::Terminate => {
+                    Ok(Ok(Message::Terminate)) => {
                         println!("Worker {} was told to terminate.", id);
-
+                        break;
+                    }
+                    // Error cases
+                    Ok(Err(_)) => {
+                        eprintln!("Sender has disconnected. Worker {} terminates now!", id);
+                        break;
+                    }
+                    Err(_) => {
+                        eprintln!("Another Worker panicked. Worker {} terminates now!", id);
                         break;
                     }
                 }

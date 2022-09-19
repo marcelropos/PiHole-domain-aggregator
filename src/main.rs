@@ -46,7 +46,7 @@ fn parse_config() -> Result<Config, Error> {
         Err(err) => match err.kind() {
             ErrorKind::NotFound => {
                 let config = Config::default();
-                let serialized = serde_yaml::to_string(&config).unwrap();
+                let serialized = serde_yaml::to_string(&config)?;
                 fs::write(CONFIG_PATH, serialized)?;
                 Err(anyhow!("No config found! Created default config."))
             }

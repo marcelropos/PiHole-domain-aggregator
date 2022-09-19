@@ -47,17 +47,18 @@ impl ::std::default::Default for Config {
         whitelist.insert("https://global.whitelist1.local".to_owned());
         whitelist.insert("https://global.whitelist2.local".to_owned());
 
+        // The unsafe code below never results in an error because the literals always result in valid data.
         Self {
             version: 1,
             threads: NonZeroUsize::new(num_cpus::get() / 2)
-                .unwrap_or_else(|| NonZeroUsize::new(1).unwrap()),
+                .unwrap_or_else(|| unsafe { NonZeroUsize::new(1).unwrap_unchecked() }),
             addlist,
             whitelist: Some(whitelist),
             path: "./".to_owned(),
             prefix: Some("127.0.0.1 ".to_owned()),
             suffix: Some("# Some text here.".to_owned()),
-            delay: Some(NonZeroU64::new(1000).unwrap()),
-            size: Some(NonZeroUsize::new(1_000_000).unwrap()),
+            delay: Some(unsafe { NonZeroU64::new(1_000).unwrap_unchecked() }),
+            size: Some(unsafe { NonZeroUsize::new(1_000_000).unwrap_unchecked() }),
         }
     }
 }
