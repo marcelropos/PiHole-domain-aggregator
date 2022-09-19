@@ -22,8 +22,7 @@ const CONFIG_PATH: &str = "./data/config";
 ///
 /// # Errors
 /// This function will throw an error if:
-/// - [MyErrors::ConfigErr] If no configuration was found, is not valid or could not parsed.
-/// - [MyErrors::IoErr] with [std::io::ErrorKind] information if config could not be accessed.
+/// - If no configuration was found, is not valid or could not parsed.
 fn main() -> Result<(), Error> {
     let config = parse_config()?;
     run(config)
@@ -58,7 +57,7 @@ fn parse_config() -> Result<Config, Error> {
 /// Creates all addlists as in the givn Config definded.
 ///
 /// # Errors
-/// - This function will return `lib::config::Config::InvalidConfig` error when the number of threads is lower than 1 or grather than a half of all logical cores.
+/// - If the Config is invalid.
 fn run(config: Config) -> Result<(), Error> {
     let pool = ThreadPool::new(config.threads)?;
 
@@ -81,12 +80,11 @@ fn run(config: Config) -> Result<(), Error> {
 }
 
 /// Writes addlist to (multiple) file(s).
-/// 
+///
 /// Based on [lib::config::Config].size attribute the addlist is split into multiple files or written all at one file.
-/// 
+///
 /// # Errors
-/// - Returns [ErrorKind::PermissionDenied] if file could not be created or manipulated.
-/// - Or when trying to write: The first error that is not of [ErrorKind::Interrupted] kind generated.
+/// - If file could not be created or manipulated.
 fn write_to_file(config: AddlistConfig, addlist: Addlist) -> std::io::Result<()> {
     match config.config.size {
         Some(size) => addlist
