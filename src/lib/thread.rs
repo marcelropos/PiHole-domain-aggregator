@@ -19,10 +19,7 @@ impl ThreadPool {
     pub fn new(size: NonZeroUsize) -> Result<ThreadPool, Error> {
         let max = num_cpus::get() / 2;
         if max < size.get() {
-            return Err(anyhow!(
-                "The `threads` size must be lower than {}",
-                max
-            ));
+            return Err(anyhow!("The `threads` size must be lower than {}", max));
         }
 
         let (sender, receiver) = mpsc::channel();
@@ -69,7 +66,7 @@ impl Drop for ThreadPool {
             if let Some(thread) = worker.thread.take() {
                 match thread.join() {
                     Ok(_) => println!("Worker {} closes with success!", worker.id),
-                    Err(err) => println!(
+                    Err(err) => eprintln!(
                         "Worker {} failed to closes with error: {:?}",
                         worker.id, err
                     ),
