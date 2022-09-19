@@ -1,3 +1,10 @@
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::unimplemented)]
+#![warn(clippy::filter_map_next)]
+#![warn(clippy::flat_map_option)]
+#![warn(clippy::implicit_clone)]
+
 mod lib;
 use crate::lib::aggregate::data::{Addlist, AddlistConfig};
 use crate::lib::aggregate::lists::{addlist, whitelist};
