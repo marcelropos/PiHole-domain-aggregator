@@ -63,3 +63,30 @@ impl ::std::default::Default for Config {
         }
     }
 }
+
+#[cfg(test)]
+mod unsafe_tests {
+    use super::Config;
+    use std::cmp::max;
+
+    #[test]
+    fn test_config_default_threads() -> Result<(), String> {
+        let config = Config::default();
+        assert!(config.threads.unwrap().get() == max(num_cpus::get() / 2, 1));
+        Ok(())
+    }
+
+    #[test]
+    fn test_config_default_delay() -> Result<(), String> {
+        let config = Config::default();
+        assert!(config.delay.unwrap().get() == 1_000);
+        Ok(())
+    }
+
+    #[test]
+    fn test_config_default_size() -> Result<(), String> {
+        let config = Config::default();
+        assert!(config.size.unwrap().get() == 1_000_000);
+        Ok(())
+    }
+}
