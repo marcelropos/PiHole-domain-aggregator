@@ -1,6 +1,7 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::unimplemented)]
+#![deny(unsafe_code)]
 #![warn(clippy::filter_map_next)]
 #![warn(clippy::flat_map_option)]
 #![warn(clippy::implicit_clone)]

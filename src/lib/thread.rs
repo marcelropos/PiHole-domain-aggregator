@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Error};
 use core::num::NonZeroUsize;
 use num_cpus;
-use std::sync::{mpsc, Arc, Mutex};
+use std::{
+    cmp::Ordering,
+    sync::{mpsc, Arc, Mutex},
+};
 use worker::{Message, Worker};
 
 pub struct ThreadPool {
@@ -16,19 +19,27 @@ impl ThreadPool {
     ///
     /// # Errors
     /// The ThreadPool creation failes when the number of threads grather than a half of all logical cores.
-    pub fn new(size: NonZeroUsize) -> Result<ThreadPool, Error> {
-        let max = num_cpus::get() / 2;
-        if max < size.get() {
-            return Err(anyhow!("The `threads` size must be lower than {}", max));
-        }
+    pub fn new(threads: Option<NonZeroUsize>) -> Result<ThreadPool, Error> {
+        let capacity = {
+            let limit = num_cpus::get() / 2;
+            match threads {
+                Some(threads) => match limit.cmp(&threads.get()) {
+                    Ordering::Less | Ordering::Equal => threads.get(),
+                    Ordering::Greater => {
+                        return Err(anyhow!("The `threads` size must be lower than {limit}"))
+                    }
+                },
+                None => limit,
+            }
+        };
 
         let (sender, receiver) = mpsc::channel();
 
         let receiver = Arc::new(Mutex::new(receiver));
 
-        let mut workers = Vec::with_capacity(size.get());
+        let mut workers = Vec::with_capacity(capacity);
 
-        for id in 0..size.get() {
+        for id in 0..capacity {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
