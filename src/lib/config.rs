@@ -55,7 +55,7 @@ impl ::std::default::Default for Config {
             threads: Some(unsafe { NonZeroUsize::new_unchecked(max(num_cpus::get() / 2, 1)) }),
             addlist,
             whitelist: Some(whitelist),
-            path: "./".to_owned(),
+            path: "./addlists".to_owned(),
             prefix: Some("127.0.0.1 ".to_owned()),
             suffix: Some("# Some text here.".to_owned()),
             delay: Some(unsafe { NonZeroU64::new_unchecked(1_000) }),
