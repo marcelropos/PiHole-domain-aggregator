@@ -49,23 +49,23 @@ impl ::std::default::Default for Config {
         whitelist.insert("https://global.whitelist2.local".to_owned());
 
         // The unsafe code below never results in an error because the literals always result in valid data.
-        #[allow(unsafe_code)]
+        #[allow(clippy::unwrap_used)]
         Self {
             version: 1,
-            threads: Some(unsafe { NonZeroUsize::new_unchecked(max(num_cpus::get() / 2, 1)) }),
+            threads: Some(NonZeroUsize::new(max(num_cpus::get() / 2, 1)).unwrap()),
             addlist,
             whitelist: Some(whitelist),
             path: "./addlists".to_owned(),
             prefix: Some("127.0.0.1 ".to_owned()),
             suffix: Some("# Some text here.".to_owned()),
-            delay: Some(unsafe { NonZeroU64::new_unchecked(1_000) }),
-            size: Some(unsafe { NonZeroUsize::new_unchecked(1_000_000) }),
+            delay: Some(NonZeroU64::new(1_000).unwrap()),
+            size: Some(NonZeroUsize::new(1_000_000).unwrap()),
         }
     }
 }
 
 #[cfg(test)]
-mod unsafe_tests {
+mod tests {
     use super::Config;
     use std::cmp::max;
 
