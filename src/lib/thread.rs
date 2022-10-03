@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Error};
 use core::num::NonZeroUsize;
 use num_cpus;
-use std::sync::{mpsc, Arc, Mutex};
+use std::{
+    cmp::Ordering,
+    sync::{mpsc, Arc, Mutex},
+};
 use worker::{Message, Worker};
 
 pub struct ThreadPool {
@@ -16,22 +19,27 @@ impl ThreadPool {
     ///
     /// # Errors
     /// The ThreadPool creation failes when the number of threads grather than a half of all logical cores.
-    pub fn new(size: NonZeroUsize) -> Result<ThreadPool, Error> {
-        let max = num_cpus::get() / 2;
-        if max < size.get() {
-            return Err(anyhow!(
-                "The `threads` size must be lower than {}",
-                max
-            ));
-        }
+    pub fn new(threads: Option<NonZeroUsize>) -> Result<ThreadPool, Error> {
+        let capacity = {
+            let limit = num_cpus::get() / 2;
+            match threads {
+                Some(threads) => match limit.cmp(&threads.get()) {
+                    Ordering::Less | Ordering::Equal => threads.get(),
+                    Ordering::Greater => {
+                        return Err(anyhow!("The `threads` size must be lower than {limit}"))
+                    }
+                },
+                None => limit,
+            }
+        };
 
         let (sender, receiver) = mpsc::channel();
 
         let receiver = Arc::new(Mutex::new(receiver));
 
-        let mut workers = Vec::with_capacity(size.get());
+        let mut workers = Vec::with_capacity(capacity);
 
-        for id in 0..size.get() {
+        for id in 0..capacity {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
@@ -69,7 +77,7 @@ impl Drop for ThreadPool {
             if let Some(thread) = worker.thread.take() {
                 match thread.join() {
                     Ok(_) => println!("Worker {} closes with success!", worker.id),
-                    Err(err) => println!(
+                    Err(err) => eprintln!(
                         "Worker {} failed to closes with error: {:?}",
                         worker.id, err
                     ),
@@ -100,17 +108,26 @@ mod worker {
     impl Worker {
         pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
             let thread = thread::spawn(move || loop {
-                let message = receiver.lock().unwrap().recv().unwrap();
+                let message = receiver.lock().map(|guard| guard.recv());
 
                 match message {
-                    Message::NewJob(job) => {
+                    //Expected cases
+                    Ok(Ok(Message::NewJob(job))) => {
                         println!("Worker {} got a job; executing.", id);
                         job();
                         println!("Worker {} finished a job; waiting for job.", id);
                     }
-                    Message::Terminate => {
+                    Ok(Ok(Message::Terminate)) => {
                         println!("Worker {} was told to terminate.", id);
-
+                        break;
+                    }
+                    // Error cases
+                    Ok(Err(_)) => {
+                        eprintln!("Sender has disconnected. Worker {} terminates now!", id);
+                        break;
+                    }
+                    Err(_) => {
+                        eprintln!("Another Worker panicked. Worker {} terminates now!", id);
                         break;
                     }
                 }

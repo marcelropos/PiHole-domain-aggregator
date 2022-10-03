@@ -26,7 +26,7 @@ pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -
     let data = sources
         .addlist
         .iter()
-        .flat_map(|url| fetch(url, &client, config.config.delay))
+        .filter_map(|url| fetch(url, &client, config.config.delay))
         .flat_map(parse)
         .filter(|domain| !global_whitelist.contains(domain))
         .filter(|domain| !local_reduced_whitelist.contains(domain))
@@ -34,7 +34,7 @@ pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -
 
     Some(Addlist {
         list: mutate(config, data),
-        name: config.name.to_owned(),
+        name: config.name.clone(),
     })
 }
 
@@ -44,7 +44,7 @@ pub fn whitelist(mut sources: Option<HashSet<String>>, config: &Config) -> Optio
     let whitelist = sources
         .take()?
         .iter()
-        .flat_map(|url| fetch(url, &client, config.delay))
+        .filter_map(|url| fetch(url, &client, config.delay))
         .flat_map(parse)
         .collect();
     Some(whitelist)
@@ -75,7 +75,7 @@ fn parse(raw_data: String) -> HashSet<String> {
                 .unwrap_or(line)
         })
         .flat_map(|line| line.split_whitespace())
-        .flat_map(validation::validate)
+        .filter_map(validation::validate)
         .collect()
 }
 

@@ -2,12 +2,13 @@ use crate::lib::aggregate::data::AddlistSources;
 use core::num::{NonZeroU64, NonZeroUsize};
 use num_cpus;
 use serde::{Deserialize, Serialize};
+use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub version: u8,
-    pub threads: NonZeroUsize,
+    pub threads: Option<NonZeroUsize>,
     pub addlist: HashMap<String, AddlistSources>,
     pub whitelist: Option<HashSet<String>>,
     pub size: Option<NonZeroUsize>,
@@ -47,17 +48,45 @@ impl ::std::default::Default for Config {
         whitelist.insert("https://global.whitelist1.local".to_owned());
         whitelist.insert("https://global.whitelist2.local".to_owned());
 
+        // The unsafe code below never results in an error because the literals always result in valid data.
+        #[allow(clippy::unwrap_used)]
         Self {
             version: 1,
-            threads: NonZeroUsize::new(num_cpus::get() / 2)
-                .unwrap_or_else(|| NonZeroUsize::new(1).unwrap()),
+            threads: Some(NonZeroUsize::new(max(num_cpus::get() / 2, 1)).unwrap()),
             addlist,
             whitelist: Some(whitelist),
-            path: "./".to_owned(),
+            path: "./addlists".to_owned(),
             prefix: Some("127.0.0.1 ".to_owned()),
             suffix: Some("# Some text here.".to_owned()),
-            delay: Some(NonZeroU64::new(1000).unwrap()),
+            delay: Some(NonZeroU64::new(1_000).unwrap()),
             size: Some(NonZeroUsize::new(1_000_000).unwrap()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Config;
+    use std::cmp::max;
+
+    #[test]
+    fn test_config_default_threads() -> Result<(), String> {
+        let config = Config::default();
+        assert!(config.threads.unwrap().get() == max(num_cpus::get() / 2, 1));
+        Ok(())
+    }
+
+    #[test]
+    fn test_config_default_delay() -> Result<(), String> {
+        let config = Config::default();
+        assert!(config.delay.unwrap().get() == 1_000);
+        Ok(())
+    }
+
+    #[test]
+    fn test_config_default_size() -> Result<(), String> {
+        let config = Config::default();
+        assert!(config.size.unwrap().get() == 1_000_000);
+        Ok(())
     }
 }

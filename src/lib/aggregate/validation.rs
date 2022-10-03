@@ -101,6 +101,7 @@ mod tests {
         );
         Ok(())
     }
+
     #[test]
     fn test_not_truncated() -> Result<(), String> {
         assert_eq!(
@@ -141,6 +142,7 @@ mod tests {
 
         Ok(())
     }
+
     #[test]
     fn test_validate_letter_or_digit() -> Result<(), String> {
         assert_eq!(
@@ -170,6 +172,7 @@ mod tests {
         );
         Ok(())
     }
+    
     #[test]
     fn test_validate_valid_chars() -> Result<(), String> {
         assert_eq!(
@@ -179,6 +182,7 @@ mod tests {
         );
         Ok(())
     }
+
     #[test]
     fn test_validate_short() -> Result<(), String> {
         assert_eq!(
@@ -188,6 +192,7 @@ mod tests {
         );
         Ok(())
     }
+
     #[test]
     fn test_validate_long() -> Result<(), String> {
         assert_eq!(
