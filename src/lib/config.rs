@@ -65,6 +65,7 @@ impl ::std::default::Default for Config {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::Config;
     use std::cmp::max;

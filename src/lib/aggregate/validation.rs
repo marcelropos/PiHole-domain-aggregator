@@ -50,7 +50,6 @@ pub fn validate(domain: &str) -> Option<String> {
 fn encode(decoded: &str) -> String {
     decoded
         .split(DOT)
-        .into_iter()
         .map(help_encode)
         .collect::<Vec<String>>()
         .join(".")
@@ -172,7 +171,7 @@ mod tests {
         );
         Ok(())
     }
-    
+
     #[test]
     fn test_validate_valid_chars() -> Result<(), String> {
         assert_eq!(

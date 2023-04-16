@@ -137,16 +137,18 @@ mod tests {
 
         let url = &mockito::server_url();
 
-        let mut config = Config::default();
-        config.delay = None;
-        config.prefix = None;
-        config.suffix = None;
+        let mut config = Config {
+            delay: None,
+            prefix: None,
+            suffix: None,
+            ..Default::default()
+        };
 
         let mut addlist = HashMap::new();
         addlist.insert(
             "Addlist".to_owned(),
             AddlistSources {
-                addlist: HashSet::from_iter(vec![url.to_owned() + "/addlist"]),
+                addlist: HashSet::from_iter(vec![url.clone() + "/addlist"]),
                 whitelist: None,
             },
         );
@@ -184,17 +186,19 @@ mod tests {
 
         let url = &mockito::server_url();
 
-        let mut config = Config::default();
-        config.delay = None;
-        config.prefix = None;
-        config.suffix = None;
+        let mut config = Config {
+            delay: None,
+            prefix: None,
+            suffix: None,
+            ..Default::default()
+        };
 
         let mut addlist = HashMap::new();
         addlist.insert(
             "Addlist".to_owned(),
             AddlistSources {
-                addlist: HashSet::from_iter(vec![url.to_owned() + "/addlist"]),
-                whitelist: Some(HashSet::from_iter(vec![url.to_owned() + "/whitelist"])),
+                addlist: HashSet::from_iter(vec![url.clone() + "/addlist"]),
+                whitelist: Some(HashSet::from_iter(vec![url.clone() + "/whitelist"])),
             },
         );
         config.addlist = addlist;
@@ -293,9 +297,11 @@ mod tests {
             String::from("b.com"),
             String::from("c.com"),
         ]);
-        let mut config = Config::default();
-        config.prefix = None;
-        config.suffix = None;
+        let config = Config {
+            prefix: None,
+            suffix: None,
+            ..Default::default()
+        };
         let addlist_config = super::AddlistConfig {
             name: String::from("New"),
             config: Arc::new(config),
@@ -320,9 +326,11 @@ mod tests {
             String::from("www.b.com"),
             String::from("www.c.com"),
         ]);
-        let mut config = Config::default();
-        config.prefix = None;
-        config.suffix = None;
+        let config = Config {
+            prefix: None,
+            suffix: None,
+            ..Default::default()
+        };
         let addlist_config = super::AddlistConfig {
             name: String::from("New"),
             config: Arc::new(config),
@@ -350,9 +358,11 @@ mod tests {
             String::from("www.b.com"),
             String::from("www.c.com"),
         ]);
-        let mut config = Config::default();
-        config.prefix = None;
-        config.suffix = None;
+        let config = Config {
+            prefix: None,
+            suffix: None,
+            ..Default::default()
+        };
         let addlist_config = super::AddlistConfig {
             name: String::from("New"),
             config: Arc::new(config),
