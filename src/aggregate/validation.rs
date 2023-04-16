@@ -1,4 +1,4 @@
-use crate::lib::aggregate::lists::DOT;
+use crate::aggregate::lists::DOT;
 use std::num::NonZeroUsize;
 
 const HYPHEN: char = '-';

@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Error};
 use core::num::NonZeroUsize;
-use num_cpus;
 use std::{
     cmp::Ordering,
     sync::{mpsc, Arc, Mutex},

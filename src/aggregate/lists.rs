@@ -1,5 +1,5 @@
-use crate::lib::aggregate::data::{Addlist, AddlistConfig};
-use crate::lib::aggregate::validation;
+use crate::aggregate::data::{Addlist, AddlistConfig};
+use crate::aggregate::validation;
 use crate::Config;
 use core::num::NonZeroU64;
 use itertools::Itertools;
@@ -121,7 +121,7 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lib::aggregate::data::{Addlist, AddlistConfig, AddlistSources};
+    use crate::aggregate::data::{Addlist, AddlistConfig, AddlistSources};
     use crate::Config;
     use mockito::mock;
     use std::collections::{HashMap, HashSet};

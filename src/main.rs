@@ -6,11 +6,14 @@
 #![warn(clippy::flat_map_option)]
 #![warn(clippy::implicit_clone)]
 
-mod lib;
-use crate::lib::aggregate::data::{Addlist, AddlistConfig};
-use crate::lib::aggregate::lists::{addlist, whitelist};
-use crate::lib::config::Config;
-use crate::lib::thread::ThreadPool;
+mod config;
+mod thread;
+mod aggregate;
+
+use config::Config;
+use thread::ThreadPool;
+use aggregate::data::{Addlist, AddlistConfig};
+use aggregate::lists::{addlist, whitelist};
 use anyhow::{anyhow, Error};
 use serde_json::error::Category;
 use std::fs;

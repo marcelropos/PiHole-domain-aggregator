@@ -1,4 +1,4 @@
-use crate::lib::config::Config;
+use crate::config::Config;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
 
