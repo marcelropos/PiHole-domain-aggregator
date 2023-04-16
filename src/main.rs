@@ -9,10 +9,11 @@
 mod config;
 mod thread;
 mod aggregate;
+mod data;
 
 use config::Config;
 use thread::ThreadPool;
-use aggregate::data::{Addlist, AddlistConfig};
+use data::{Addlist, AddlistConfig};
 use aggregate::lists::{addlist, whitelist};
 use anyhow::{anyhow, Error};
 use serde_json::error::Category;

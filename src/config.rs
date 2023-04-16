@@ -1,4 +1,4 @@
-use crate::aggregate::data::AddlistSources;
+use crate::data::AddlistSources;
 use core::num::{NonZeroU64, NonZeroUsize};
 use serde::{Deserialize, Serialize};
 use std::cmp::max;
