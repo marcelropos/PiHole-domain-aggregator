@@ -14,28 +14,20 @@ mod thread;
 
 use aggregate::lists::{addlist, whitelist};
 use anyhow::Error;
-use config::{parse_config, Config};
+use config::parse_config;
 use data::AddlistConfig;
 use std::sync::Arc;
 use store::write_to_file;
 use thread::ThreadPool;
 
-/// After a valid configuration is parsed, the program will be started.
-///
-/// # Errors
-/// This function will throw an error if:
-/// - If no configuration was found, is not valid or could not parsed.
-fn main() -> Result<(), Error> {
-    run(parse_config()?)
-}
-
 /// Creates all addlists as in the givn Config definded.
 ///
 /// # Errors
 /// - If the Config is invalid.
-fn run(config: Config) -> Result<(), Error> {
+fn main() -> Result<(), Error> {
+    let config = parse_config()?;
     let pool = ThreadPool::new(config.threads)?;
-
+    
     let config = Arc::new(config);
     let whitelist = Arc::new(whitelist(config.whitelist.clone()).unwrap_or_default());
     for (addlist_name, _) in config.addlist.iter() {
