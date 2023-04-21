@@ -1,12 +1,9 @@
 use crate::data::{Addlist, AddlistConfig};
 use crate::aggregate::validation;
-use crate::Config;
-use core::num::NonZeroU64;
 use itertools::Itertools;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::{thread, time};
 
 pub const DOT: char = '.';
 const WWW: &str = "www.";
@@ -16,7 +13,7 @@ const COMMENT: char = '#';
 pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -> Option<Addlist> {
     let client = Client::new();
     let sources = config.config.addlist.get(&config.name)?;
-    let local_whitelist = match whitelist(sources.whitelist.clone(), &config.config) {
+    let local_whitelist = match whitelist(sources.whitelist.clone()) {
         Some(local_whitelist) => local_whitelist,
         None => HashSet::new(),
     };
@@ -26,7 +23,7 @@ pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -
     let data = sources
         .addlist
         .iter()
-        .filter_map(|url| fetch(url, &client, config.config.delay))
+        .filter_map(|url| fetch(url, &client))
         .flat_map(parse)
         .filter(|domain| !global_whitelist.contains(domain))
         .filter(|domain| !local_reduced_whitelist.contains(domain))
@@ -39,22 +36,19 @@ pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -
 }
 
 /// Creates Whitelist
-pub fn whitelist(mut sources: Option<HashSet<String>>, config: &Config) -> Option<HashSet<String>> {
+pub fn whitelist(mut sources: Option<HashSet<String>>) -> Option<HashSet<String>> {
     let client = Client::new();
     let whitelist = sources
         .take()?
         .iter()
-        .filter_map(|url| fetch(url, &client, config.delay))
+        .filter_map(|url| fetch(url, &client))
         .flat_map(parse)
         .collect();
     Some(whitelist)
 }
 
 /// Fetches raw domain data
-fn fetch(url: &String, client: &Client, delay: Option<NonZeroU64>) -> Option<String> {
-    if let Some(delay) = delay {
-        thread::sleep(time::Duration::from_millis(delay.get()));
-    }
+fn fetch(url: &String, client: &Client) -> Option<String> {
     let response = client.get(url).send().ok()?;
     if response.status() == 200 {
         return response.text().ok();
@@ -138,7 +132,6 @@ mod tests {
         let url = &mockito::server_url();
 
         let mut config = Config {
-            delay: None,
             prefix: None,
             suffix: None,
             ..Default::default()
@@ -187,7 +180,6 @@ mod tests {
         let url = &mockito::server_url();
 
         let mut config = Config {
-            delay: None,
             prefix: None,
             suffix: None,
             ..Default::default()

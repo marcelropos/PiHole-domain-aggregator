@@ -12,7 +12,6 @@ const CONFIG_PATH: &str = "./data/config";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
-    pub version: u8,
     pub threads: Option<NonZeroUsize>,
     pub addlist: HashMap<String, AddlistSources>,
     pub whitelist: Option<HashSet<String>>,
@@ -20,7 +19,6 @@ pub struct Config {
     pub path: String,
     pub prefix: Option<String>,
     pub suffix: Option<String>,
-    pub delay: Option<NonZeroU64>,
 }
 
 /// Reads and parses the configuration.
@@ -82,14 +80,12 @@ impl ::std::default::Default for Config {
         // The unsafe code below never results in an error because the literals always result in valid data.
         #[allow(clippy::unwrap_used)]
         Self {
-            version: 1,
             threads: Some(NonZeroUsize::new(max(num_cpus::get() / 2, 1)).unwrap()),
             addlist,
             whitelist: Some(whitelist),
             path: "./addlists".to_owned(),
             prefix: Some("127.0.0.1 ".to_owned()),
             suffix: Some("# Some text here.".to_owned()),
-            delay: Some(NonZeroU64::new(1_000).unwrap()),
             size: Some(NonZeroUsize::new(1_000_000).unwrap()),
         }
     }
@@ -105,13 +101,6 @@ mod tests {
     fn test_config_default_threads() -> Result<(), String> {
         let config = Config::default();
         assert!(config.threads.unwrap().get() == max(num_cpus::get() / 2, 1));
-        Ok(())
-    }
-
-    #[test]
-    fn test_config_default_delay() -> Result<(), String> {
-        let config = Config::default();
-        assert!(config.delay.unwrap().get() == 1_000);
         Ok(())
     }
 
