@@ -9,6 +9,7 @@
 mod config;
 mod thread;
 mod aggregate;
+mod config;
 mod data;
 mod store;
 
@@ -16,11 +17,10 @@ use config::Config;
 use thread::ThreadPool;
 use data::{Addlist, AddlistConfig};
 use aggregate::lists::{addlist, whitelist};
-use anyhow::{anyhow, Error};
-use serde_json::error::Category;
-use std::fs;
-use std::io::{ErrorKind, Write};
+use anyhow::Error;
+use config::{parse_config, Config};
 use std::sync::Arc;
+use data::AddlistConfig;
 use store::write_to_file;
 
 const CONFIG_PATH: &str = "./data/config";
@@ -31,34 +31,7 @@ const CONFIG_PATH: &str = "./data/config";
 /// This function will throw an error if:
 /// - If no configuration was found, is not valid or could not parsed.
 fn main() -> Result<(), Error> {
-    let config = parse_config()?;
-    run(config)
-}
-
-/// Reads and parses the configuration.
-fn parse_config() -> Result<Config, Error> {
-    match fs::read_to_string(CONFIG_PATH) {
-        Ok(raw) => match serde_json::from_str(&raw) {
-            Ok(config) => Ok(config),
-            Err(err) => match err.classify() {
-                Category::Syntax => match serde_yaml::from_str(&raw) {
-                    Ok(config) => Ok(config),
-                    Err(err) => Err(err.into()),
-                },
-                Category::Data => Err(err.into()),
-                Category::Io | Category::Eof => unreachable!(),
-            },
-        },
-        Err(err) => match err.kind() {
-            ErrorKind::NotFound => {
-                let config = Config::default();
-                let serialized = serde_yaml::to_string(&config)?;
-                fs::write(CONFIG_PATH, serialized)?;
-                Err(anyhow!("No config found! Created default config."))
-            }
-            _ => Err(err.into()),
-        },
-    }
+    run(parse_config()?)
 }
 
 /// Creates all addlists as in the givn Config definded.

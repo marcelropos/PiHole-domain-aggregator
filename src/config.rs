@@ -1,8 +1,14 @@
 use crate::data::AddlistSources;
-use core::num::{NonZeroU64, NonZeroUsize};
+use anyhow::{anyhow, Error};
+use core::num::NonZeroUsize;
 use serde::{Deserialize, Serialize};
+use serde_json::error::Category;
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::io::ErrorKind;
+
+const CONFIG_PATH: &str = "./data/config";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
@@ -15,6 +21,32 @@ pub struct Config {
     pub prefix: Option<String>,
     pub suffix: Option<String>,
     pub delay: Option<NonZeroU64>,
+}
+
+/// Reads and parses the configuration.
+pub fn parse_config() -> Result<Config, Error> {
+    match fs::read_to_string(CONFIG_PATH) {
+        Ok(raw) => match serde_json::from_str(&raw) {
+            Ok(config) => Ok(config),
+            Err(err) => match err.classify() {
+                Category::Syntax => match serde_yaml::from_str(&raw) {
+                    Ok(config) => Ok(config),
+                    Err(err) => Err(err.into()),
+                },
+                Category::Data => Err(err.into()),
+                Category::Io | Category::Eof => unreachable!(),
+            },
+        },
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => {
+                let config = Config::default();
+                let serialized = serde_yaml::to_string(&config)?;
+                fs::write(CONFIG_PATH, serialized)?;
+                Err(anyhow!("No config found! Created default config."))
+            }
+            _ => Err(err.into()),
+        },
+    }
 }
 
 /// `MyConfig` implements `Default`
