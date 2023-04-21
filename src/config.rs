@@ -21,28 +21,68 @@ pub struct Config {
     pub suffix: Option<String>,
 }
 
+enum ConfigError {
+    NotFound,
+    Anyhow(Error),
+}
+
 /// Reads and parses the configuration.
 pub fn parse_config() -> Result<Config, Error> {
-    match fs::read_to_string(CONFIG_PATH) {
+    match parse_json() {
+        Ok(config) => {
+            return Ok(config);
+        }
+        Err(ConfigError::Anyhow(err)) => {
+            return Err(err);
+        }
+        Err(ConfigError::NotFound) => {}
+    }
+
+    match parse_yml() {
+        Ok(config) => {
+            return Ok(config);
+        }
+        Err(ConfigError::Anyhow(err)) => {
+            return Err(err);
+        }
+        Err(ConfigError::NotFound) => {}
+    }
+    // Create default config.
+    let config = Config::default();
+    let serialized = serde_yaml::to_string(&config)?;
+    fs::write(CONFIG_PATH, serialized)?;
+    Err(anyhow!("No config found! Created default config."))
+}
+
+fn parse_json() -> Result<Config, ConfigError> {
+    match fs::read_to_string(format!("{CONFIG_PATH}.rs")) {
         Ok(raw) => match serde_json::from_str(&raw) {
             Ok(config) => Ok(config),
             Err(err) => match err.classify() {
                 Category::Syntax => match serde_yaml::from_str(&raw) {
                     Ok(config) => Ok(config),
-                    Err(err) => Err(err.into()),
+                    Err(err) => Err(ConfigError::Anyhow(err.into())),
                 },
-                Category::Data => Err(err.into()),
+                Category::Data => Err(ConfigError::Anyhow(err.into())),
                 Category::Io | Category::Eof => unreachable!(),
             },
         },
         Err(err) => match err.kind() {
-            ErrorKind::NotFound => {
-                let config = Config::default();
-                let serialized = serde_yaml::to_string(&config)?;
-                fs::write(CONFIG_PATH, serialized)?;
-                Err(anyhow!("No config found! Created default config."))
-            }
-            _ => Err(err.into()),
+            ErrorKind::NotFound => Err(ConfigError::NotFound),
+            _ => Err(ConfigError::Anyhow(err.into())),
+        },
+    }
+}
+
+fn parse_yml() -> Result<Config, ConfigError> {
+    match fs::read_to_string(format!("{CONFIG_PATH}.yml")) {
+        Ok(raw) => match serde_yaml::from_str(&raw) {
+            Ok(config) => Ok(config),
+            Err(err) => Err(ConfigError::Anyhow(anyhow!(err))),
+        },
+        Err(err) => match err.kind() {
+            ErrorKind::NotFound => Err(ConfigError::NotFound),
+            _ => Err(ConfigError::Anyhow(err.into())),
         },
     }
 }
