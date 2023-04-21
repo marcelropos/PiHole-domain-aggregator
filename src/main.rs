@@ -26,10 +26,10 @@ use thread::ThreadPool;
 /// - If the Config is invalid.
 fn main() -> Result<(), Error> {
     let config = parse_config()?;
+    let whitelist = Arc::new(whitelist(&config.whitelist).unwrap_or_default());
     let pool = ThreadPool::new(config.threads)?;
     
     let config = Arc::new(config);
-    let whitelist = Arc::new(whitelist(config.whitelist.clone()).unwrap_or_default());
     for (addlist_name, _) in config.addlist.iter() {
         let addlist_config = AddlistConfig::new(addlist_name, config.clone());
         let whitelist = whitelist.clone();

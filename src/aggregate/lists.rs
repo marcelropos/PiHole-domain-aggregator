@@ -1,5 +1,5 @@
-use crate::data::{Addlist, AddlistConfig};
 use crate::aggregate::validation;
+use crate::data::{Addlist, AddlistConfig};
 use itertools::Itertools;
 use reqwest::blocking::Client;
 use std::collections::HashSet;
@@ -13,7 +13,7 @@ const COMMENT: char = '#';
 pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -> Option<Addlist> {
     let client = Client::new();
     let sources = config.config.addlist.get(&config.name)?;
-    let local_whitelist = match whitelist(sources.whitelist.clone()) {
+    let local_whitelist = match whitelist(&sources.whitelist) {
         Some(local_whitelist) => local_whitelist,
         None => HashSet::new(),
     };
@@ -36,15 +36,17 @@ pub fn addlist(config: &AddlistConfig, global_whitelist: Arc<HashSet<String>>) -
 }
 
 /// Creates Whitelist
-pub fn whitelist(mut sources: Option<HashSet<String>>) -> Option<HashSet<String>> {
-    let client = Client::new();
-    let whitelist = sources
-        .take()?
-        .iter()
-        .filter_map(|url| fetch(url, &client))
-        .flat_map(parse)
-        .collect();
-    Some(whitelist)
+pub fn whitelist(sources: &Option<HashSet<String>>) -> Option<HashSet<String>> {
+    if let Some(sources) = sources {
+        let client = Client::new();
+        Some(sources
+            .iter()
+            .filter_map(|url| fetch(url, &client))
+            .flat_map(parse)
+            .collect())
+    }else {
+        None
+    }
 }
 
 /// Fetches raw domain data
@@ -115,8 +117,8 @@ fn mutate(config: &AddlistConfig, domains: HashSet<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::Config;
     use crate::data::{Addlist, AddlistConfig, AddlistSources};
-    use crate::Config;
     use mockito::mock;
     use std::collections::{HashMap, HashSet};
     use std::sync::Arc;
